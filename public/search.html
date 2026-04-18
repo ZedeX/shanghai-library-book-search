@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="description" content="上海图书馆图书搜索结果">
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <title>搜索结果 - 上海图书馆搜索</title>
+    <link rel="stylesheet" href="/css/base.css">
+    <link rel="stylesheet" href="/css/search.css">
+</head>
+<body>
+<div class="container">
+    <div class="site-header">
+        <a href="/" class="site-logo">
+            <img src="/favicon.svg" alt="上海图书馆" class="site-icon">
+            <span class="site-title">上海图书馆搜索</span>
+        </a>
+    </div>
+    <div class="results-header">
+        <h2 id="search-title">搜索中...</h2>
+        <p id="results-count">正在搜索...</p>
+    </div>
+    <div class="search-toolbar">
+        <form id="search-form" onsubmit="submitSearch(); return false;">
+            <div class="search-form-inline">
+                <input type="text" name="lookfor" class="search-form-input" id="search-input" placeholder="继续搜索...">
+                <select name="type" class="search-type-inline" id="search-type">
+                    <option value="AllFields">全部字段</option>
+                    <option value="Title">书名</option>
+                    <option value="Author">作者</option>
+                    <option value="Publisher">出版社</option>
+                    <option value="Subject">主题</option>
+                    <option value="CallNumber">索书号</option>
+                </select>
+                <button type="submit" class="btn btn-primary">搜索</button>
+            </div>
+        </form>
+        <div class="library-filter-section" id="library-filter-section">
+            <div class="library-filter-header">
+                <span class="library-filter-title">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+                    <span id="library-filter-label">图书馆筛选</span>
+                </span>
+                <div class="library-filter-actions">
+                    <button class="btn-link" onclick="clearLibraryFilter()">清除筛选</button>
+                    <button class="btn-link" onclick="showAllLibraries()">查看全部馆藏</button>
+                </div>
+            </div>
+            <select id="library-filter" class="filter-group select" style="width:100%;padding:8px 12px;border:1px solid var(--border-color);border-radius:6px;" onchange="applyLibraryFilter()">
+                <option value="">全部图书馆</option>
+                <optgroup label="市级馆">
+                    <option value="上海图书馆（淮海路馆+东馆+网借中心）">上海图书馆（淮海路馆+东馆+网借中心）</option>
+                    <option value="上海图书馆淮海路馆">上海图书馆淮海路馆</option>
+                    <option value="上海图书馆东馆">上海图书馆东馆</option>
+                    <option value="上海图书馆享借中心">上海图书馆享借中心</option>
+                </optgroup>
+                <optgroup label="区级馆">
+                    <option value="闵行分馆">闵行分馆</option>
+                    <option value="浦东新区分馆">浦东新区分馆</option>
+                    <option value="黄浦分馆">黄浦分馆</option>
+                    <option value="徐汇区图书馆（徐家汇书院）">徐汇区图书馆（徐家汇书院）</option>
+                    <option value="长宁区图书馆">长宁区图书馆</option>
+                    <option value="静安区图书馆">静安区图书馆</option>
+                    <option value="普陀分馆">普陀分馆</option>
+                    <option value="虹口区图书馆">虹口区图书馆</option>
+                    <option value="杨浦分馆">杨浦分馆</option>
+                    <option value="宝山分馆">宝山分馆</option>
+                    <option value="嘉定分馆">嘉定分馆</option>
+                    <option value="青浦分馆">青浦分馆</option>
+                    <option value="松江区图书馆">松江区图书馆</option>
+                    <option value="奉贤分馆">奉贤分馆</option>
+                    <option value="金山分馆">金山分馆</option>
+                    <option value="崇明分馆">崇明分馆</option>
+                </optgroup>
+            </select>
+        </div>
+    </div>
+    <div id="results"></div>
+    <div id="pagination" class="pagination"></div>
+</div>
+<footer class="site-footer">
+    <div class="footer-content">
+        <p>&copy; 2026 <a href="https://zhaozhiru.com" target="_blank">Zhao Zhiru</a> | Sponsored by <a href="https://zedex.cn" target="_blank">ZedeX</a></p>
+    </div>
+</footer>
+<div class="loading-overlay" id="loading-overlay"></div>
+<script src="/js/library-utils.js"></script>
+<script src="/js/search.js"></script>
+</body>
+</html>

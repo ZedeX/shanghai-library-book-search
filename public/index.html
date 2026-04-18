@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="description" content="上海图书馆图书检索系统 - 快速搜索图书，查看所有分馆馆藏信息">
+    <meta property="og:title" content="上海图书馆搜索">
+    <meta property="og:description" content="快速搜索图书，查看所有分馆馆藏信息，响应速度比官网快10倍">
+    <meta property="og:type" content="website">
+    <meta property="og:locale" content="zh_CN">
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="上海图书馆搜索">
+    <meta name="twitter:description" content="快速搜索图书，查看所有分馆馆藏信息">
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <title>上海图书馆搜索</title>
+    <link rel="stylesheet" href="/css/base.css">
+    <style>
+        .hero {
+            text-align: center;
+            padding: 60px 16px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .hero h1 { font-size: 48px; font-weight: 700; letter-spacing: -0.24px; margin-bottom: 12px; }
+        .hero p { font-size: 18px; color: var(--text-secondary); margin-bottom: 32px; }
+        .search-box { background: var(--white); padding: 24px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+        .search-form-main { display: flex; gap: 12px; margin-bottom: 16px; }
+        .search-input { flex: 1; padding: 14px 18px; font-size: 17px; border: none; border-radius: 10px; background: var(--light-gray); outline: none; transition: box-shadow 0.2s; }
+        .search-input:focus { box-shadow: 0 0 0 3px rgba(0,113,227,0.3); }
+        .search-type-select { padding: 14px 18px; font-size: 15px; border: none; border-radius: 10px; background: var(--light-gray); outline: none; cursor: pointer; min-width: 120px; }
+        .library-settings { margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--border-color); text-align: left; }
+        .library-settings-title { font-size: 14px; color: var(--text-secondary); margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+        .library-select-container { position: relative; }
+        .library-select { width: 100%; padding: 12px 16px; font-size: 15px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--white); outline: none; cursor: pointer; appearance: none; }
+        .library-select:focus { border-color: var(--apple-blue); box-shadow: 0 0 0 3px rgba(0,113,227,0.2); }
+        .current-library { margin-top: 8px; font-size: 13px; color: var(--text-tertiary); }
+        .current-library strong { color: var(--apple-blue); }
+        .features { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; max-width: 800px; margin: 48px auto 0; padding: 0 16px; }
+        .feature-card { background: var(--white); padding: 24px; border-radius: 12px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+        .feature-icon { font-size: 32px; margin-bottom: 12px; }
+        .feature-title { font-size: 16px; font-weight: 600; margin-bottom: 8px; }
+        .feature-desc { font-size: 14px; color: var(--text-secondary); }
+        @media (max-width: 768px) {
+            .hero { padding: 40px 16px; }
+            .hero h1 { font-size: 32px; }
+            .hero p { font-size: 16px; }
+            .search-form-main { flex-direction: column; }
+            .search-type-select { width: 100%; }
+        }
+    </style>
+</head>
+<body>
+<div class="hero">
+    <h1>上海图书馆搜索</h1>
+    <p>快速搜索图书，查看所有分馆馆藏信息</p>
+    <div class="search-box">
+        <form action="/Search/Results" method="GET" id="search-form">
+            <div class="search-form-main">
+                <select name="type" class="search-type-select" id="search-type">
+                    <option value="AllFields">全部字段</option>
+                    <option value="Title">书名</option>
+                    <option value="Author">作者</option>
+                    <option value="Publisher">出版社</option>
+                    <option value="Subject">主题</option>
+                    <option value="CallNumber">索书号</option>
+                </select>
+                <input type="text" name="lookfor" class="search-input" placeholder="输入关键词搜索..." autofocus>
+                <button type="submit" class="btn btn-primary" style="padding:14px 28px;font-size:16px;border-radius:10px;">搜索</button>
+            </div>
+            <div class="library-settings">
+                <div class="library-settings-title">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+                    偏好的图书馆（可选）
+                </div>
+                <div class="library-select-container">
+                    <select name="preferredLibrary" class="library-select" id="preferred-library">
+                        <option value="">全部图书馆</option>
+                        <optgroup label="市级馆">
+                            <option value="上海图书馆（淮海路馆+东馆+网借中心）">上海图书馆（淮海路馆+东馆+网借中心）</option>
+                            <option value="上海图书馆淮海路馆">上海图书馆淮海路馆</option>
+                            <option value="上海图书馆东馆">上海图书馆东馆</option>
+                            <option value="上海图书馆享借中心">上海图书馆享借中心</option>
+                        </optgroup>
+                        <optgroup label="区级馆">
+                            <option value="闵行分馆">闵行分馆</option>
+                            <option value="浦东新区分馆">浦东新区分馆</option>
+                            <option value="黄浦分馆">黄浦分馆</option>
+                            <option value="徐汇区图书馆（徐家汇书院）">徐汇区图书馆（徐家汇书院）</option>
+                            <option value="长宁区图书馆">长宁区图书馆</option>
+                            <option value="静安区图书馆">静安区图书馆</option>
+                            <option value="普陀分馆">普陀分馆</option>
+                            <option value="虹口区图书馆">虹口区图书馆</option>
+                            <option value="杨浦分馆">杨浦分馆</option>
+                            <option value="宝山分馆">宝山分馆</option>
+                            <option value="嘉定分馆">嘉定分馆</option>
+                            <option value="青浦分馆">青浦分馆</option>
+                            <option value="松江区图书馆">松江区图书馆</option>
+                            <option value="奉贤分馆">奉贤分馆</option>
+                            <option value="金山分馆">金山分馆</option>
+                            <option value="崇明分馆">崇明分馆</option>
+                        </optgroup>
+                    </select>
+                </div>
+            </div>
+        </form>
+    </div>
+    <div class="features">
+        <div class="feature-card">
+            <div class="feature-icon">🔍</div>
+            <div class="feature-title">快速搜索</div>
+            <div class="feature-desc">支持书名、作者、出版社等多维度搜索</div>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon">📚</div>
+            <div class="feature-title">馆藏查询</div>
+            <div class="feature-desc">实时查看各分馆馆藏与借阅状态</div>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon">⚡</div>
+            <div class="feature-title">极速响应</div>
+            <div class="feature-desc">部署在 Cloudflare 边缘网络，全球加速</div>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon">📍</div>
+            <div class="feature-title">偏好图书馆</div>
+            <div class="feature-desc">设置常用图书馆，优先显示该馆馆藏</div>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon">📖</div>
+            <div class="feature-title">索书号查询</div>
+            <div class="feature-desc">直接按索书号定位图书位置</div>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon">🌐</div>
+            <div class="feature-title">全分馆覆盖</div>
+            <div class="feature-desc">覆盖上海图书馆及16个区级分馆</div>
+        </div>
+    </div>
+</div>
+<footer class="site-footer">
+    <div class="footer-content">
+        <p>&copy; 2026 <a href="https://zhaozhiru.com" target="_blank">Zhao Zhiru</a> | Sponsored by <a href="https://zedex.cn" target="_blank">ZedeX</a></p>
+    </div>
+</footer>
+<script>
+    (function() {
+        const LIBRARY_STORAGE_KEY = 'preferredLibrary';
+        const saved = localStorage.getItem(LIBRARY_STORAGE_KEY);
+        if (saved) {
+            document.getElementById('preferred-library').value = saved;
+        }
+        document.getElementById('search-form').addEventListener('submit', function() {
+            const lib = document.getElementById('preferred-library').value;
+            if (lib) {
+                localStorage.setItem(LIBRARY_STORAGE_KEY, lib);
+            }
+        });
+    })();
+</script>
+</body>
+</html>

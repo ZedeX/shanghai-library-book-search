@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="description" content="图书详情 - 上海图书馆搜索">
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <title>图书详情 - 上海图书馆搜索</title>
+    <link rel="stylesheet" href="/css/base.css">
+    <link rel="stylesheet" href="/css/record.css">
+</head>
+<body>
+<div class="container">
+    <a href="javascript:history.back()" class="back-link">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+        返回搜索结果
+    </a>
+    <div class="book-detail">
+        <div id="book-content">
+            <p style="text-align:center;color:var(--text-secondary);padding:40px;">
+                <span class="loading-spinner"></span> 正在加载图书信息...
+            </p>
+        </div>
+    </div>
+</div>
+<footer class="site-footer">
+    <div class="footer-content">
+        <p>&copy; 2026 <a href="https://zhaozhiru.com" target="_blank">Zhao Zhiru</a> | Sponsored by <a href="https://zedex.cn" target="_blank">ZedeX</a></p>
+    </div>
+</footer>
+<script src="/js/library-utils.js"></script>
+<script src="/js/record.js"></script>
+</body>
+</html>

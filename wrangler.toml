@@ -1,0 +1,10 @@
+name = "shanghai-library-book-search"
+main = "src/index.ts"
+compatibility_date = "2024-06-20"
+
+[assets]
+directory = "./public"
+binding = "ASSETS"
+
+[observability]
+enabled = true

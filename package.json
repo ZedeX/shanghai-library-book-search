@@ -1,0 +1,35 @@
+{
+  "name": "shlib",
+  "version": "1.0.0",
+  "description": "上海图书馆图书检索 CLI 和 Web 应用",
+  "bin": {
+    "shlib": "./cli.js"
+  },
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "typecheck": "tsc --noEmit",
+    "cli": "node cli.js"
+  },
+  "keywords": [
+    "shanghai-library",
+    "book-search",
+    "cli",
+    "cloudflare-workers"
+  ],
+  "author": "ZedeX",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ZedeX/shanghai-library-book-search.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ZedeX/shanghai-library-book-search/issues"
+  },
+  "homepage": "https://github.com/ZedeX/shanghai-library-book-search#readme",
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260418.1",
+    "typescript": "^5.5.0",
+    "wrangler": "^4.83.0"
+  }
+}

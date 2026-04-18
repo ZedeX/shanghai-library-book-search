@@ -1,0 +1,222 @@
+:root {
+    --apple-blue: #0071e3;
+    --near-black: #1d1d1f;
+    --light-gray: #f5f5f7;
+    --white: #ffffff;
+    --text-secondary: rgba(0, 0, 0, 0.8);
+    --text-tertiary: rgba(0, 0, 0, 0.5);
+    --border-color: rgba(0, 0, 0, 0.1);
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html {
+    font-size: 16px;
+    -webkit-text-size-adjust: 100%;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', Arial, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    background-color: var(--light-gray);
+    color: var(--near-black);
+    line-height: 1.47;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    min-height: 100vh;
+}
+
+.container {
+    max-width: 980px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.search-box {
+    background: var(--white);
+    border-radius: 11px;
+    padding: 16px;
+    margin: 40px auto;
+    max-width: 600px;
+    box-shadow: rgba(0, 0, 0, 0.22) 3px 5px 30px 0px;
+}
+
+.search-input {
+    width: 100%;
+    padding: 12px 16px;
+    font-size: 17px;
+    border: none;
+    border-radius: 8px;
+    background: var(--light-gray);
+    outline: none;
+    transition: box-shadow 0.2s;
+}
+
+.search-input:focus {
+    box-shadow: 0 0 0 2px var(--apple-blue);
+}
+
+.btn {
+    display: inline-block;
+    padding: 8px 15px;
+    font-size: 17px;
+    font-weight: 400;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background-color 0.2s, transform 0.1s;
+}
+
+.btn:active {
+    transform: scale(0.98);
+}
+
+.btn-primary {
+    background: var(--apple-blue);
+    color: var(--white);
+}
+
+.btn-primary:hover {
+    background: #0077ed;
+}
+
+.btn-outline {
+    background: transparent;
+    color: var(--apple-blue);
+    border: 1px solid var(--apple-blue);
+    border-radius: 980px;
+}
+
+.btn-outline:hover {
+    background: rgba(0, 113, 227, 0.1);
+}
+
+.btn-secondary {
+    background: var(--light-gray);
+    color: var(--near-black);
+}
+
+.btn-secondary:hover {
+    background: #e8e8ed;
+}
+
+.hero {
+    text-align: center;
+    padding: 80px 20px;
+}
+
+.hero h1 {
+    font-size: 56px;
+    font-weight: 600;
+    line-height: 1.07;
+    letter-spacing: -0.28px;
+    margin-bottom: 16px;
+}
+
+.hero p {
+    font-size: 21px;
+    font-weight: 400;
+    color: var(--text-secondary);
+    margin-bottom: 32px;
+}
+
+.loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+    color: var(--text-tertiary);
+}
+
+.loading::after {
+    content: '';
+    width: 20px;
+    height: 20px;
+    margin-left: 10px;
+    border: 2px solid var(--apple-blue);
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+@media (max-width: 768px) {
+    .container {
+        padding: 16px;
+    }
+
+    .hero {
+        padding: 40px 16px;
+    }
+
+    .hero h1 {
+        font-size: 32px;
+        letter-spacing: -0.16px;
+    }
+
+    .hero p {
+        font-size: 17px;
+        margin-bottom: 24px;
+    }
+
+    .search-box {
+        margin: 20px auto;
+        padding: 12px;
+    }
+
+    .search-input {
+        font-size: 16px;
+        padding: 10px 14px;
+    }
+
+    .btn {
+        font-size: 15px;
+        padding: 8px 12px;
+    }
+}
+
+@media (max-width: 480px) {
+    .hero h1 {
+        font-size: 28px;
+    }
+
+    .hero p {
+        font-size: 15px;
+    }
+}
+
+.site-footer {
+    text-align: center;
+    padding: 40px 20px;
+    margin-top: 60px;
+    border-top: 1px solid var(--border-color);
+    background: var(--white);
+}
+
+.footer-content {
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.footer-content p {
+    font-size: 14px;
+    color: var(--text-tertiary);
+    margin: 8px 0;
+}
+
+.footer-content a {
+    color: var(--apple-blue);
+    text-decoration: none;
+    transition: opacity 0.2s;
+}
+
+.footer-content a:hover {
+    opacity: 0.7;
+}
