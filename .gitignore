@@ -31,3 +31,16 @@ npm-debug.log*
 
 # TypeScript
 *.tsbuildinfo
+
+# Desktop (Go) build output
+desktop/*.exe
+desktop/rsrc_syso
+
+# Debug/temp files
+desktop/test_*
+desktop/api_*
+desktop/*_log.txt
+desktop/*_raw.*
+desktop/extracted_*
+desktop/js_*
+desktop/_validate.js

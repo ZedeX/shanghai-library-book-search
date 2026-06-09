@@ -1,0 +1,453 @@
+/* === Sidebar Panel === */
+.sidebar-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.3);
+    z-index: 900;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease;
+}
+
+.sidebar-overlay.active {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.sidebar-panel {
+    position: fixed;
+    top: 0;
+    right: 0;
+    width: 320px;
+    height: 100vh;
+    background: var(--white);
+    box-shadow: -4px 0 20px rgba(0, 0, 0, 0.1);
+    z-index: 950;
+    display: flex;
+    flex-direction: column;
+    transform: translateX(100%);
+    transition: transform 0.25s ease;
+}
+
+.sidebar-panel.open {
+    transform: translateX(0);
+}
+
+.sidebar-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.sidebar-title {
+    font-size: 15px;
+    font-weight: 600;
+}
+
+.sidebar-close {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-tertiary);
+    padding: 4px;
+    border-radius: 4px;
+    transition: color 0.15s;
+}
+
+.sidebar-close:hover {
+    color: var(--near-black);
+}
+
+.sidebar-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.sidebar-tab {
+    flex: 1;
+    padding: 10px;
+    text-align: center;
+    font-size: 13px;
+    cursor: pointer;
+    border: none;
+    background: none;
+    color: var(--text-tertiary);
+    border-bottom: 2px solid transparent;
+    transition: all 0.15s;
+}
+
+.sidebar-tab.active {
+    color: var(--apple-blue);
+    border-bottom-color: var(--apple-blue);
+    font-weight: 600;
+}
+
+.sidebar-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px;
+}
+
+.sidebar-empty {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text-tertiary);
+    font-size: 14px;
+}
+
+.sidebar-empty svg {
+    width: 40px;
+    height: 40px;
+    margin-bottom: 12px;
+    opacity: 0.3;
+}
+
+.sidebar-footer {
+    padding: 12px 20px;
+    border-top: 1px solid var(--border-color);
+    text-align: center;
+}
+
+.sidebar-clear-btn {
+    background: none;
+    border: none;
+    color: #ff3b30;
+    cursor: pointer;
+    font-size: 13px;
+    padding: 6px 12px;
+    border-radius: 6px;
+    transition: background 0.15s;
+}
+
+.sidebar-clear-btn:hover {
+    background: #ffebee;
+}
+
+/* === Header Action Buttons === */
+.header-actions {
+    display: flex;
+    gap: 6px;
+    margin-left: auto;
+    flex-shrink: 0;
+}
+
+.header-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 14px;
+    border-radius: 8px;
+    border: none;
+    background: var(--light-gray);
+    cursor: pointer;
+    font-size: 13px;
+    color: var(--text-secondary);
+    transition: all 0.15s;
+}
+
+.header-btn:hover {
+    background: #e8e8ed;
+}
+
+.header-btn.active {
+    background: var(--apple-blue);
+    color: white;
+}
+
+.header-btn svg {
+    width: 16px;
+    height: 16px;
+}
+
+/* === History Items === */
+.history-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.history-item:hover {
+    background: var(--light-gray);
+}
+
+.history-icon {
+    color: var(--text-tertiary);
+    flex-shrink: 0;
+}
+
+.history-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.history-keyword {
+    font-size: 14px;
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.history-meta {
+    font-size: 12px;
+    color: var(--text-tertiary);
+}
+
+.history-delete {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-tertiary);
+    padding: 4px;
+    border-radius: 4px;
+    opacity: 0;
+    transition: opacity 0.15s;
+}
+
+.history-item:hover .history-delete {
+    opacity: 1;
+}
+
+.history-delete:hover {
+    color: #ff3b30;
+    background: #ffebee;
+}
+
+/* === Bookmark Items === */
+.bookmark-item {
+    display: flex;
+    gap: 12px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.bookmark-item:hover {
+    background: var(--light-gray);
+}
+
+.bookmark-cover {
+    width: 40px;
+    height: 56px;
+    border-radius: 4px;
+    background: var(--light-gray);
+    overflow: hidden;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    color: var(--text-tertiary);
+}
+
+.bookmark-cover img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.bookmark-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.bookmark-title {
+    font-size: 14px;
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.bookmark-author {
+    font-size: 12px;
+    color: var(--text-tertiary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.bookmark-delete {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-tertiary);
+    padding: 4px;
+    border-radius: 4px;
+    opacity: 0;
+    transition: opacity 0.15s;
+    align-self: center;
+}
+
+.bookmark-item:hover .bookmark-delete {
+    opacity: 1;
+}
+
+.bookmark-delete:hover {
+    color: #ff3b30;
+    background: #ffebee;
+}
+
+/* === Bookmark Button on Book Cards === */
+.bookmark-btn-card {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-tertiary);
+    padding: 4px;
+    border-radius: 4px;
+    transition: all 0.15s;
+    z-index: 10;
+}
+
+.bookmark-btn-card:hover {
+    color: var(--apple-blue);
+}
+
+.bookmark-btn-card.bookmarked {
+    color: var(--apple-blue);
+}
+
+/* === Bookmark Button on Detail Page === */
+.detail-bookmark-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    border-radius: 8px;
+    border: 1px solid var(--apple-blue);
+    background: transparent;
+    color: var(--apple-blue);
+    cursor: pointer;
+    font-size: 14px;
+    margin-top: 12px;
+    transition: all 0.15s;
+}
+
+.detail-bookmark-btn:hover {
+    background: var(--apple-blue);
+    color: white;
+}
+
+.detail-bookmark-btn.bookmarked {
+    background: var(--apple-blue);
+    color: white;
+}
+
+/* === Home Page Recent History === */
+.recent-history {
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border-color);
+    text-align: left;
+}
+
+.recent-history-title {
+    font-size: 14px;
+    color: var(--text-secondary);
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.recent-history-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.recent-history-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 12px;
+    background: var(--light-gray);
+    border-radius: 16px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.15s;
+    text-decoration: none;
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.recent-history-tag:hover {
+    background: #e8e8ed;
+    color: var(--near-black);
+}
+
+.recent-history-tag svg {
+    width: 12px;
+    height: 12px;
+    flex-shrink: 0;
+}
+
+.recent-history-viewall {
+    font-size: 13px;
+    color: var(--apple-blue);
+    text-decoration: none;
+    cursor: pointer;
+    background: none;
+    border: none;
+    padding: 0;
+}
+
+.recent-history-viewall:hover {
+    text-decoration: underline;
+}
+
+/* === Responsive === */
+@media (max-width: 768px) {
+    .sidebar-panel {
+        width: 280px;
+    }
+
+    .header-btn {
+        padding: 6px 10px;
+        font-size: 12px;
+    }
+
+    .header-btn span.btn-label {
+        display: none;
+    }
+
+    .recent-history-tag {
+        font-size: 12px;
+        padding: 5px 10px;
+    }
+}
+
+@media (max-width: 480px) {
+    .sidebar-panel {
+        width: 100%;
+    }
+}
+
+/* === Record Page Header Bar === */
+.record-header-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+}
+
+.record-header-bar .back-link {
+    margin-bottom: 0;
+}

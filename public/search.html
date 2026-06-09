@@ -9,6 +9,7 @@
     <title>搜索结果 - 上海图书馆搜索</title>
     <link rel="stylesheet" href="/css/base.css">
     <link rel="stylesheet" href="/css/search.css">
+    <link rel="stylesheet" href="/css/sidebar.css">
 </head>
 <body>
 <div class="container">
@@ -17,6 +18,16 @@
             <img src="/favicon.svg" alt="上海图书馆" class="site-icon">
             <span class="site-title">上海图书馆搜索</span>
         </a>
+        <div class="header-actions">
+            <button class="header-btn" id="btn-history" onclick="toggleSidebar('history')" title="搜索历史">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                <span class="btn-label">历史</span>
+            </button>
+            <button class="header-btn" id="btn-bookmarks" onclick="toggleSidebar('bookmarks')" title="收藏夹">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+                <span class="btn-label">收藏</span>
+            </button>
+        </div>
     </div>
     <div class="results-header">
         <h2 id="search-title">搜索中...</h2>
@@ -86,7 +97,27 @@
     </div>
 </footer>
 <div class="loading-overlay" id="loading-overlay"></div>
+<script src="/js/storage.js"></script>
 <script src="/js/library-utils.js"></script>
 <script src="/js/search.js"></script>
+
+<!-- Sidebar Panel -->
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+<div class="sidebar-panel" id="sidebar-panel">
+    <div class="sidebar-header">
+        <span class="sidebar-title" id="sidebar-title">搜索历史</span>
+        <button class="sidebar-close" onclick="closeSidebar()">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+    </div>
+    <div class="sidebar-tabs">
+        <button class="sidebar-tab active" id="sidebar-tab-history" onclick="switchSidebarTab('history')">历史</button>
+        <button class="sidebar-tab" id="sidebar-tab-bookmarks" onclick="switchSidebarTab('bookmarks')">收藏</button>
+    </div>
+    <div class="sidebar-body" id="sidebar-body"></div>
+    <div class="sidebar-footer" id="sidebar-footer" style="display:none">
+        <button class="sidebar-clear-btn" onclick="clearAllHistory()">清空全部历史</button>
+    </div>
+</div>
 </body>
 </html>

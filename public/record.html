@@ -9,13 +9,26 @@
     <title>图书详情 - 上海图书馆搜索</title>
     <link rel="stylesheet" href="/css/base.css">
     <link rel="stylesheet" href="/css/record.css">
+    <link rel="stylesheet" href="/css/sidebar.css">
 </head>
 <body>
 <div class="container">
-    <a href="javascript:history.back()" class="back-link">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-        返回搜索结果
-    </a>
+    <div class="record-header-bar">
+        <a href="javascript:history.back()" class="back-link">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+            返回搜索结果
+        </a>
+        <div class="header-actions">
+            <button class="header-btn" id="btn-history" onclick="toggleRecordSidebar('history')" title="搜索历史">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                <span class="btn-label">历史</span>
+            </button>
+            <button class="header-btn" id="btn-bookmarks" onclick="toggleRecordSidebar('bookmarks')" title="收藏夹">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+                <span class="btn-label">收藏</span>
+            </button>
+        </div>
+    </div>
     <div class="book-detail">
         <div id="book-content">
             <p style="text-align:center;color:var(--text-secondary);padding:40px;">
@@ -29,7 +42,27 @@
         <p>&copy; 2026 <a href="https://zhaozhiru.com" target="_blank">Zhao Zhiru</a> | Sponsored by <a href="https://zedex.cn" target="_blank">ZedeX</a></p>
     </div>
 </footer>
+<script src="/js/storage.js"></script>
 <script src="/js/library-utils.js"></script>
 <script src="/js/record.js"></script>
+
+<!-- Sidebar Panel -->
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="closeRecordSidebar()"></div>
+<div class="sidebar-panel" id="sidebar-panel">
+    <div class="sidebar-header">
+        <span class="sidebar-title" id="sidebar-title">搜索历史</span>
+        <button class="sidebar-close" onclick="closeRecordSidebar()">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+    </div>
+    <div class="sidebar-tabs">
+        <button class="sidebar-tab active" id="sidebar-tab-history" onclick="switchRecordSidebarTab('history')">历史</button>
+        <button class="sidebar-tab" id="sidebar-tab-bookmarks" onclick="switchRecordSidebarTab('bookmarks')">收藏</button>
+    </div>
+    <div class="sidebar-body" id="sidebar-body"></div>
+    <div class="sidebar-footer" id="sidebar-footer" style="display:none">
+        <button class="sidebar-clear-btn" onclick="clearRecordHistory()">清空全部历史</button>
+    </div>
+</div>
 </body>
 </html>

@@ -1,0 +1,91 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+          cache-dependency-path: desktop/go.sum
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      # Generate rsrc.syso from icon.ico using go-winres
+      - name: Generate Windows resource file
+        working-directory: desktop
+        run: |
+          go install github.com/tc-hib/go-winres@latest
+          go-winres init
+          $winres = @'
+          //go:build ignore
+
+          package main
+
+          import (
+              "github.com/tc-hib/go-winres"
+          )
+
+          func main() {
+              r := winres.Resource{}
+              r.SetIcon("icon.ico")
+              r.SetManifest(winres.AppManifest{
+                  ExecutionLevel: winres.AsInvoker,
+                  DPIAwareness:   winres.DPIAware,
+              })
+              r.WriteSyso("rsrc.syso", winres.ArchAMD64)
+          }
+          '@
+          Set-Content -Path winres_gen.go -Value $winres -Encoding UTF8
+          go-winres make
+        shell: pwsh
+
+      - name: Build Desktop (Release)
+        working-directory: desktop
+        run: go build -ldflags="-H windowsgui -s -w" -o shlib-desktop.exe .
+        env:
+          CGO_ENABLED: 0
+          GOOS: windows
+          GOARCH: amd64
+
+      - name: Build Desktop (Debug)
+        working-directory: desktop
+        run: go build -o shlib-desktop-debug.exe .
+        env:
+          CGO_ENABLED: 0
+          GOOS: windows
+          GOARCH: amd64
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: Deploy to Cloudflare Workers
+        run: npx wrangler deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            desktop/shlib-desktop.exe
+            desktop/shlib-desktop-debug.exe
+          generate_release_notes: true

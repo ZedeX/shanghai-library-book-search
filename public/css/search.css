@@ -2,6 +2,9 @@
     padding: 16px 0;
     border-bottom: 1px solid var(--border-color);
     margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
 }
 
 .site-logo {

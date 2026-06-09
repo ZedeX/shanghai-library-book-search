@@ -70,6 +70,9 @@ let currentFilters = {
 
 let preferredLibrary = '';
 
+var sidebarOpen = false;
+var sidebarTab = 'history';
+
 function init() {
     preferredLibrary = LibraryUtils.getPreferredLibrary();
     document.getElementById('search-input').value = query;
@@ -164,6 +167,8 @@ async function loadResults() {
             }
             countEl.textContent = '找到 ' + displayTotal + ' 条结果';
             renderResults(data);
+            // Save search history
+            StorageUtils.addHistory(query, searchType, parseInt(displayTotal) || data.books.length);
         } else {
             resultsEl.innerHTML = '<div class="error-message">搜索出错: ' + (data.error || '未知错误') + '</div>';
             countEl.textContent = '搜索失败';
@@ -188,7 +193,11 @@ function renderResults(data) {
         const coverUrl = book.cover_url ?
             (book.cover_url.startsWith('http') ? book.cover_url : BASE_URL + book.cover_url) :
             BASE_URL + '/Cover/Show?instanceId=' + book.record_id;
-        return '<a href="/Record/' + book.record_id + '" class="book-card" id="book-' + book.record_id + '">' +
+        var isBookmarked = StorageUtils.isBookmarked(book.record_id);
+        return '<a href="/Record/' + book.record_id + '" class="book-card" id="book-' + book.record_id + '" style="position:relative">' +
+            '<button class="bookmark-btn-card' + (isBookmarked ? ' bookmarked' : '') + '" onclick="toggleBookmarkCard(\'' + book.record_id + '\',\'' + escapeAttr(book.title) + '\',\'' + escapeAttr(book.author || '') + '\',\'' + escapeAttr(coverUrl) + '\',event)" title="' + (isBookmarked ? '取消收藏' : '收藏') + '">' +
+                '<svg width="18" height="18" viewBox="0 0 24 24" fill="' + (isBookmarked ? 'currentColor' : 'none') + '" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>' +
+            '</button>' +
             '<div class="book-cover">' +
                 '<img src="' + coverUrl + '" alt="封面" loading="lazy" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'"><span class="book-cover-placeholder" style="display:none">无封面</span>' +
             '</div>' +
@@ -309,6 +318,149 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+}
+
+function escapeAttr(text) {
+    if (!text) return '';
+    return text.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+}
+
+function formatTime(timeStr) {
+    if (!timeStr) return '';
+    var d = new Date(timeStr);
+    if (isNaN(d.getTime())) return timeStr;
+    var now = new Date();
+    var diff = now - d;
+    if (diff < 60000) return '刚刚';
+    if (diff < 3600000) return Math.floor(diff / 60000) + '分钟前';
+    if (diff < 86400000) return Math.floor(diff / 3600000) + '小时前';
+    if (diff < 604800000) return Math.floor(diff / 86400000) + '天前';
+    return (d.getMonth() + 1) + '/' + d.getDate();
+}
+
+// === Bookmark Card Toggle ===
+function toggleBookmarkCard(recordId, title, author, coverUrl, event) {
+    event.preventDefault();
+    event.stopPropagation();
+    var added = StorageUtils.toggleBookmark(recordId, title, author, coverUrl);
+    updateBookmarkButtons(recordId, added);
+    if (sidebarOpen && sidebarTab === 'bookmarks') loadBookmarksList();
+}
+
+function updateBookmarkButtons(recordId, isBookmarked) {
+    document.querySelectorAll('.bookmark-btn-card').forEach(function(btn) {
+        var onclick = btn.getAttribute('onclick');
+        if (onclick && onclick.indexOf(recordId) > -1) {
+            if (isBookmarked) btn.classList.add('bookmarked');
+            else btn.classList.remove('bookmarked');
+            btn.querySelector('svg').setAttribute('fill', isBookmarked ? 'currentColor' : 'none');
+            btn.title = isBookmarked ? '取消收藏' : '收藏';
+        }
+    });
+}
+
+// === Sidebar ===
+function toggleSidebar(tab) {
+    if (sidebarOpen && sidebarTab === tab) {
+        closeSidebar();
+        return;
+    }
+    sidebarTab = tab;
+    sidebarOpen = true;
+    document.getElementById('sidebar-overlay').classList.add('active');
+    document.getElementById('sidebar-panel').classList.add('open');
+    document.getElementById('btn-history').classList.toggle('active', tab === 'history');
+    document.getElementById('btn-bookmarks').classList.toggle('active', tab === 'bookmarks');
+    switchSidebarTab(tab);
+}
+
+function closeSidebar() {
+    sidebarOpen = false;
+    document.getElementById('sidebar-overlay').classList.remove('active');
+    document.getElementById('sidebar-panel').classList.remove('open');
+    document.getElementById('btn-history').classList.remove('active');
+    document.getElementById('btn-bookmarks').classList.remove('active');
+    document.getElementById('sidebar-footer').style.display = 'none';
+}
+
+function switchSidebarTab(tab) {
+    sidebarTab = tab;
+    document.getElementById('sidebar-tab-history').classList.toggle('active', tab === 'history');
+    document.getElementById('sidebar-tab-bookmarks').classList.toggle('active', tab === 'bookmarks');
+    document.getElementById('sidebar-title').textContent = tab === 'history' ? '搜索历史' : '收藏夹';
+    if (tab === 'history') loadHistoryList();
+    else loadBookmarksList();
+}
+
+function loadHistoryList() {
+    var body = document.getElementById('sidebar-body');
+    var footer = document.getElementById('sidebar-footer');
+    var history = StorageUtils.getHistory();
+    if (!history || history.length === 0) {
+        body.innerHTML = '<div class="sidebar-empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg><p>暂无搜索历史</p></div>';
+        footer.style.display = 'none';
+        return;
+    }
+    footer.style.display = '';
+    body.innerHTML = history.map(function(item) {
+        var typeMap = {AllFields:'全部',Title:'书名',Author:'作者',Publisher:'出版社',Subject:'主题',CallNumber:'索书号'};
+        var typeLabel = typeMap[item.search_type] || item.search_type;
+        return '<div class="history-item" onclick="searchFromHistory(\'' + escapeAttr(item.keyword) + '\',\'' + item.search_type + '\')">' +
+            '<span class="history-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>' +
+            '<div class="history-info">' +
+                '<div class="history-keyword">' + escapeHtml(item.keyword) + '</div>' +
+                '<div class="history-meta">' + typeLabel + ' · ' + item.result_count + '条结果 · ' + formatTime(item.created_at) + '</div>' +
+            '</div>' +
+            '<button class="history-delete" onclick="deleteHistory(' + item.id + ',event)" title="删除">' +
+                '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>' +
+            '</button>' +
+        '</div>';
+    }).join('');
+}
+
+function loadBookmarksList() {
+    var body = document.getElementById('sidebar-body');
+    var footer = document.getElementById('sidebar-footer');
+    var bookmarks = StorageUtils.getBookmarks();
+    footer.style.display = 'none';
+    if (!bookmarks || bookmarks.length === 0) {
+        body.innerHTML = '<div class="sidebar-empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg><p>暂无收藏</p></div>';
+        return;
+    }
+    body.innerHTML = bookmarks.map(function(item) {
+        var coverUrl = item.cover_url || '';
+        return '<div class="bookmark-item" onclick="window.location.href=\'/Record/' + item.record_id + '\'">' +
+            '<div class="bookmark-cover">' + (coverUrl ? '<img src="' + coverUrl + '" onerror="this.style.display=\'none\';this.parentElement.textContent=\'无封面\'">' : '无封面') + '</div>' +
+            '<div class="bookmark-info">' +
+                '<div class="bookmark-title">' + escapeHtml(item.title) + '</div>' +
+                '<div class="bookmark-author">' + escapeHtml(item.author || '') + '</div>' +
+            '</div>' +
+            '<button class="bookmark-delete" onclick="deleteBookmark(' + item.id + ',event)" title="删除">' +
+                '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>' +
+            '</button>' +
+        '</div>';
+    }).join('');
+}
+
+function searchFromHistory(keyword, type) {
+    window.location.href = '/Search/Results?lookfor=' + encodeURIComponent(keyword) + '&type=' + type;
+}
+
+function deleteHistory(id, event) {
+    event.stopPropagation();
+    StorageUtils.deleteHistory(id);
+    loadHistoryList();
+}
+
+function deleteBookmark(id, event) {
+    event.stopPropagation();
+    StorageUtils.deleteBookmark(id);
+    loadBookmarksList();
+}
+
+function clearAllHistory() {
+    StorageUtils.clearHistory();
+    loadHistoryList();
 }
 
 init();

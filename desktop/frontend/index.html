@@ -1,0 +1,2404 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>上海图书馆图书检索</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <style>
+        :root {
+            --apple-blue: #0071e3;
+            --near-black: #1d1d1f;
+            --light-gray: #f5f5f7;
+            --white: #ffffff;
+            --text-primary: #1d1d1f;
+            --text-secondary: rgba(0,0,0,0.8);
+            --text-tertiary: rgba(0,0,0,0.5);
+            --border-color: rgba(0,0,0,0.1);
+            --status-available: #2e7d32;
+            --status-unavailable: #c62828;
+            --status-unknown: #666;
+            --sidebar-width: 320px;
+            --header-height: 52px;
+        }
+        * { margin:0; padding:0; box-sizing:border-box; }
+        html { font-size:16px; -webkit-text-size-adjust:100%; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', Arial, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            background: var(--light-gray);
+            color: var(--near-black);
+            line-height: 1.47;
+            -webkit-font-smoothing: antialiased;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+
+        /* === Top Header === */
+        .app-header {
+            height: var(--header-height);
+            background: var(--white);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            gap: 16px;
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            z-index: 100;
+        }
+        .app-logo {
+            display: flex; align-items: center; gap: 10px;
+            text-decoration: none; color: inherit; flex-shrink: 0;
+        }
+        .app-logo svg { width: 28px; height: 28px; }
+        .app-logo-text { font-size: 17px; font-weight: 600; }
+        .header-search {
+            flex: 1; max-width: 600px; display: flex; gap: 8px;
+        }
+        .header-search-input {
+            flex: 1; padding: 8px 14px; font-size: 14px;
+            border: none; border-radius: 8px; background: var(--light-gray);
+            outline: none; transition: box-shadow 0.2s;
+        }
+        .header-search-input:focus { box-shadow: 0 0 0 2px var(--apple-blue); }
+        .header-search-type {
+            padding: 8px 12px; font-size: 13px;
+            border: none; border-radius: 8px; background: var(--light-gray);
+            outline: none; cursor: pointer;
+        }
+        .header-actions { display: flex; gap: 6px; margin-left: auto; flex-shrink: 0; }
+        .header-btn {
+            display: flex; align-items: center; gap: 6px;
+            padding: 7px 14px; border-radius: 8px; border: none;
+            background: var(--light-gray); cursor: pointer; font-size: 13px;
+            color: var(--text-secondary); transition: all 0.15s;
+        }
+        .header-btn:hover { background: #e8e8ed; }
+        .header-btn.active { background: var(--apple-blue); color: white; }
+        .header-btn svg { width: 16px; height: 16px; }
+        .version-badge {
+            font-size: 11px; color: var(--text-tertiary); padding: 4px 8px;
+            background: var(--light-gray); border-radius: 4px;
+        }
+        .update-dot {
+            width: 6px; height: 6px; border-radius: 50%;
+            background: #ff3b30; display: none; margin-left: 2px;
+        }
+        .update-dot.show { display: inline-block; }
+
+        /* === Main Layout === */
+        .app-body {
+            margin-top: var(--header-height);
+            height: calc(100vh - var(--header-height));
+            display: flex;
+        }
+        .main-content {
+            flex: 1; overflow-y: auto; overflow-x: hidden;
+        }
+
+        /* === Sidebar === */
+        .sidebar {
+            width: 0; overflow: hidden;
+            background: var(--white);
+            border-left: 1px solid var(--border-color);
+            transition: width 0.25s ease;
+            display: flex; flex-direction: column;
+        }
+        .sidebar.open { width: var(--sidebar-width); }
+        .sidebar-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        .sidebar-title { font-size: 15px; font-weight: 600; }
+        .sidebar-close {
+            background: none; border: none; cursor: pointer;
+            color: var(--text-tertiary); padding: 4px;
+        }
+        .sidebar-close:hover { color: var(--text-primary); }
+        .sidebar-tabs {
+            display: flex; border-bottom: 1px solid var(--border-color);
+        }
+        .sidebar-tab {
+            flex: 1; padding: 10px; text-align: center;
+            font-size: 13px; cursor: pointer; border: none;
+            background: none; color: var(--text-tertiary);
+            border-bottom: 2px solid transparent;
+            transition: all 0.15s;
+        }
+        .sidebar-tab.active {
+            color: var(--apple-blue); border-bottom-color: var(--apple-blue);
+            font-weight: 600;
+        }
+        .sidebar-body { flex: 1; overflow-y: auto; padding: 12px; }
+        .sidebar-empty {
+            text-align: center; padding: 40px 20px;
+            color: var(--text-tertiary); font-size: 14px;
+        }
+        .sidebar-empty svg { width: 40px; height: 40px; margin-bottom: 12px; opacity: 0.3; }
+
+        /* History items */
+        .history-item {
+            display: flex; align-items: center; gap: 10px;
+            padding: 10px 12px; border-radius: 8px; cursor: pointer;
+            transition: background 0.15s;
+        }
+        .history-item:hover { background: var(--light-gray); }
+        .history-icon { color: var(--text-tertiary); flex-shrink: 0; }
+        .history-info { flex: 1; min-width: 0; }
+        .history-keyword {
+            font-size: 14px; font-weight: 500;
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        }
+        .history-meta { font-size: 12px; color: var(--text-tertiary); }
+        .history-delete {
+            background: none; border: none; cursor: pointer;
+            color: var(--text-tertiary); padding: 4px; border-radius: 4px;
+            opacity: 0; transition: opacity 0.15s;
+        }
+        .history-item:hover .history-delete { opacity: 1; }
+        .history-delete:hover { color: #ff3b30; background: #ffebee; }
+
+        /* Bookmark items */
+        .bookmark-item {
+            display: flex; gap: 12px; padding: 10px 12px;
+            border-radius: 8px; cursor: pointer; transition: background 0.15s;
+        }
+        .bookmark-item:hover { background: var(--light-gray); }
+        .bookmark-cover {
+            width: 40px; height: 56px; border-radius: 4px;
+            background: var(--light-gray); overflow: hidden; flex-shrink: 0;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 10px; color: var(--text-tertiary);
+        }
+        .bookmark-cover img { width: 100%; height: 100%; object-fit: cover; }
+        .bookmark-info { flex: 1; min-width: 0; }
+        .bookmark-title {
+            font-size: 14px; font-weight: 500;
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        }
+        .bookmark-author {
+            font-size: 12px; color: var(--text-tertiary);
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        }
+        .bookmark-delete {
+            background: none; border: none; cursor: pointer;
+            color: var(--text-tertiary); padding: 4px; border-radius: 4px;
+            opacity: 0; transition: opacity 0.15s; align-self: center;
+        }
+        .bookmark-item:hover .bookmark-delete { opacity: 1; }
+        .bookmark-delete:hover { color: #ff3b30; background: #ffebee; }
+
+        /* === Home Page === */
+        .page-home {
+            text-align: center;
+            padding: 80px 20px 40px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .page-home h1 { font-size: 48px; font-weight: 700; letter-spacing: -0.24px; margin-bottom: 12px; }
+        .page-home .subtitle { font-size: 18px; color: var(--text-secondary); margin-bottom: 36px; }
+        .home-search-box {
+            background: var(--white); padding: 24px; border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        }
+        .home-search-row { display: flex; gap: 12px; margin-bottom: 16px; }
+        .home-search-input {
+            flex: 1; padding: 14px 18px; font-size: 17px;
+            border: none; border-radius: 10px; background: var(--light-gray);
+            outline: none; transition: box-shadow 0.2s;
+        }
+        .home-search-input:focus { box-shadow: 0 0 0 3px rgba(0,113,227,0.3); }
+        .home-search-type {
+            padding: 14px 18px; font-size: 15px;
+            border: none; border-radius: 10px; background: var(--light-gray);
+            outline: none; cursor: pointer; min-width: 120px;
+        }
+        .btn-primary {
+            padding: 14px 28px; font-size: 16px; border-radius: 10px;
+            background: var(--apple-blue); color: var(--white);
+            border: none; cursor: pointer; font-weight: 500;
+            transition: background 0.15s;
+        }
+        .btn-primary:hover { background: #0077ed; }
+        .btn-primary:active { transform: scale(0.98); }
+        .library-settings {
+            margin-top: 20px; padding-top: 16px;
+            border-top: 1px solid var(--border-color); text-align: left;
+        }
+        .library-settings-label {
+            font-size: 13px; color: var(--text-tertiary); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .library-select {
+            width: 100%; padding: 10px 14px; font-size: 14px;
+            border: 1px solid var(--border-color); border-radius: 8px;
+            background: var(--white); outline: none; cursor: pointer;
+            appearance: none;
+        }
+        .library-select:focus { border-color: var(--apple-blue); box-shadow: 0 0 0 3px rgba(0,113,227,0.2); }
+        .features-grid {
+            display: grid; grid-template-columns: repeat(3, 1fr);
+            gap: 16px; margin-top: 48px;
+        }
+        .feature-card {
+            background: var(--white); padding: 20px; border-radius: 12px;
+            text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        }
+        .feature-icon { font-size: 28px; margin-bottom: 8px; }
+        .feature-title { font-size: 15px; font-weight: 600; margin-bottom: 6px; }
+        .feature-desc { font-size: 13px; color: var(--text-secondary); }
+
+        /* === Search Results Page === */
+        .page-results { max-width: 980px; margin: 0 auto; padding: 20px; }
+        .results-header { padding: 16px 0; }
+        .results-header h2 { font-size: 24px; font-weight: 600; }
+        .results-header p { color: var(--text-secondary); margin-top: 4px; font-size: 14px; }
+        .search-toolbar {
+            background: var(--white); padding: 14px 16px; border-radius: 12px;
+            margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+        }
+        .toolbar-search-row { display: flex; gap: 10px; margin-bottom: 10px; }
+        .toolbar-input {
+            flex: 1; padding: 10px 14px; font-size: 15px;
+            border: none; border-radius: 8px; background: var(--light-gray);
+            outline: none; box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+        }
+        .toolbar-input:focus { box-shadow: 0 0 0 2px var(--apple-blue); }
+        .toolbar-type {
+            padding: 10px 14px; font-size: 14px;
+            border: none; border-radius: 8px; background: var(--light-gray);
+            outline: none; cursor: pointer; min-width: 110px;
+        }
+        .library-filter-section {
+            background: var(--light-gray); padding: 10px 14px;
+            border-radius: 8px;
+        }
+        .library-filter-header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 6px;
+        }
+        .library-filter-label {
+            font-size: 13px; font-weight: 500;
+            display: flex; align-items: center; gap: 5px;
+        }
+        .library-filter-actions { display: flex; gap: 6px; }
+        .btn-link {
+            background: none; border: none; color: var(--apple-blue);
+            cursor: pointer; padding: 3px 6px; font-size: 12px;
+        }
+        .btn-link:hover { text-decoration: underline; }
+        .library-filter-select {
+            width: 100%; padding: 8px 12px; font-size: 13px;
+            border: 1px solid var(--border-color); border-radius: 6px;
+            background: var(--white); outline: none; cursor: pointer;
+        }
+
+        /* Book cards */
+        .book-card {
+            background: var(--white); border-radius: 12px; padding: 16px;
+            margin-bottom: 10px; display: flex; gap: 14px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+            cursor: pointer; transition: box-shadow 0.2s;
+            position: relative;
+        }
+        .book-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.12); }
+        .book-cover {
+            width: 70px; height: 100px; background: var(--light-gray);
+            border-radius: 6px; flex-shrink: 0; overflow: hidden;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 12px; color: var(--text-tertiary);
+        }
+        .book-cover img { width: 100%; height: 100%; object-fit: cover; }
+        .book-info { flex: 1; min-width: 0; }
+        .book-title {
+            font-size: 16px; font-weight: 600; margin-bottom: 5px;
+            line-height: 1.3; overflow: hidden; text-overflow: ellipsis;
+            display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+        }
+        .book-meta {
+            font-size: 13px; color: var(--text-secondary); margin-bottom: 3px;
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        }
+        .book-status {
+            display: inline-block; padding: 3px 8px; font-size: 12px;
+            font-weight: 500; border-radius: 4px; margin-top: 6px;
+        }
+        .status-available { background: #e8f5e9; color: var(--status-available); }
+        .status-unavailable { background: #ffebee; color: var(--status-unavailable); }
+        .status-unknown { background: #f5f5f7; color: var(--status-unknown); }
+        .status-loading { background: #fff3e0; color: #e65100; }
+        .status-in-transit { background: #fff3e0; color: #e65100; }
+        .holdings-preview { margin-top: 6px; font-size: 12px; color: var(--text-tertiary); }
+        .holdings-preview-item {
+            display: inline-block; margin-right: 6px; padding: 2px 6px;
+            background: var(--light-gray); border-radius: 4px;
+        }
+        .bookmark-btn-card {
+            position: absolute; top: 12px; right: 12px;
+            background: none; border: none; cursor: pointer;
+            color: var(--text-tertiary); padding: 4px; border-radius: 4px;
+            transition: all 0.15s;
+        }
+        .bookmark-btn-card:hover { color: var(--apple-blue); }
+        .bookmark-btn-card.bookmarked { color: var(--apple-blue); }
+
+        /* Pagination */
+        .pagination {
+            display: flex; justify-content: center; align-items: center;
+            gap: 6px; margin-top: 24px; padding-bottom: 20px;
+        }
+        .pagination a, .pagination span {
+            padding: 8px 14px; border-radius: 8px; text-decoration: none;
+            color: var(--apple-blue); font-size: 14px; transition: background 0.15s;
+        }
+        .pagination a:hover { background: rgba(0,113,227,0.1); }
+        .pagination .current { background: var(--apple-blue); color: var(--white); }
+        .pagination .ellipsis { color: var(--text-secondary); cursor: default; }
+
+        /* No results / Error */
+        .no-results {
+            text-align: center; padding: 60px 20px; color: var(--text-secondary);
+        }
+        .no-results-icon { font-size: 48px; margin-bottom: 12px; opacity: 0.5; }
+        .error-message {
+            text-align: center; padding: 40px; color: #c62828;
+            background: #ffebee; border-radius: 12px;
+        }
+
+        /* === Detail Page === */
+        .page-detail { max-width: 980px; margin: 0 auto; padding: 20px; }
+        .back-link {
+            display: inline-flex; align-items: center; gap: 6px;
+            color: var(--apple-blue); text-decoration: none;
+            margin-bottom: 16px; font-size: 14px; cursor: pointer;
+            background: none; border: none; padding: 0;
+        }
+        .back-link:hover { text-decoration: underline; }
+        .book-detail {
+            background: var(--white); border-radius: 12px; padding: 28px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+        .book-header { display: flex; gap: 24px; margin-bottom: 24px; }
+        .book-cover-large {
+            width: 160px; height: 220px; background: var(--light-gray);
+            border-radius: 8px; flex-shrink: 0; overflow: hidden;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .book-cover-large img { width: 100%; height: 100%; object-fit: cover; }
+        .book-cover-placeholder { color: var(--text-tertiary); font-size: 14px; }
+        .book-main-info { flex: 1; }
+        .book-main-info h1 { font-size: 24px; font-weight: 600; margin-bottom: 8px; line-height: 1.3; }
+        .book-author { font-size: 16px; color: var(--text-secondary); margin-bottom: 12px; }
+        .book-meta-list { list-style: none; padding: 0; }
+        .book-meta-list li {
+            padding: 6px 0; border-bottom: 1px solid rgba(0,0,0,0.05);
+            display: flex;
+        }
+        .book-meta-list .label { width: 80px; color: var(--text-secondary); flex-shrink: 0; font-size: 14px; }
+        .book-meta-list .value { flex: 1; font-size: 14px; }
+        .detail-bookmark-btn {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 8px 16px; border-radius: 8px; border: 1px solid var(--apple-blue);
+            background: transparent; color: var(--apple-blue); cursor: pointer;
+            font-size: 14px; margin-top: 12px; transition: all 0.15s;
+        }
+        .detail-bookmark-btn:hover { background: var(--apple-blue); color: white; }
+        .detail-bookmark-btn.bookmarked { background: var(--apple-blue); color: white; }
+        .summary-section {
+            margin-top: 20px; padding-top: 16px;
+            border-top: 1px solid rgba(0,0,0,0.05);
+        }
+        .summary-section h3 { font-size: 16px; font-weight: 600; margin-bottom: 8px; }
+        .summary-section p { line-height: 1.8; color: var(--text-secondary); font-size: 14px; }
+        .holdings-section { margin-top: 24px; }
+        .holdings-header {
+            display: flex; justify-content: space-between; align-items: center;
+            flex-wrap: wrap; gap: 12px; padding-bottom: 12px;
+            border-bottom: 1px solid rgba(0,0,0,0.1);
+        }
+        .holdings-header h2 { font-size: 18px; font-weight: 600; margin: 0; }
+        .btn-official {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 6px 14px; background: var(--apple-blue); color: white;
+            border-radius: 6px; font-size: 13px; text-decoration: none;
+            transition: background 0.15s;
+        }
+        .btn-official:hover { background: #0056b3; }
+        .holdings-table {
+            width: 100%; border-collapse: collapse; margin-top: 12px;
+        }
+        .holdings-table th, .holdings-table td {
+            padding: 10px 12px; text-align: left;
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+        }
+        .holdings-table th { background: var(--light-gray); font-weight: 600; font-size: 13px; }
+        .holdings-table tr:hover { background: rgba(0,0,0,0.02); }
+        .status-badge {
+            display: inline-block; padding: 3px 10px; border-radius: 4px;
+            font-size: 12px; font-weight: 500;
+        }
+        .library-filter-row {
+            display: flex; align-items: center; gap: 12px;
+            margin-top: 12px; flex-wrap: wrap;
+        }
+        .library-filter-select-detail {
+            padding: 8px 12px; font-size: 14px;
+            border: 1px solid var(--border-color); border-radius: 6px;
+            background: var(--white); cursor: pointer; min-width: 200px;
+        }
+        .btn-switch {
+            padding: 4px 10px; background: transparent;
+            border: 1px solid var(--apple-blue); border-radius: 4px;
+            color: var(--apple-blue); font-size: 12px; cursor: pointer;
+            transition: all 0.15s;
+        }
+        .btn-switch:hover { background: var(--apple-blue); color: white; }
+        .library-mode-indicator {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 6px 12px; background: #e3f2fd; color: #1565c0;
+            border-radius: 6px; font-size: 13px; margin-top: 8px;
+        }
+
+        /* === Offline Banner === */
+        .offline-banner {
+            display: none; padding: 8px 20px; background: #fff3e0;
+            color: #e65100; font-size: 13px; text-align: center;
+            position: fixed; top: var(--header-height); left: 0; right: 0;
+            z-index: 99;
+        }
+        .offline-banner.show { display: block; }
+
+        /* === Update Modal === */
+        .modal-overlay {
+            display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.4); z-index: 200;
+            align-items: center; justify-content: center;
+        }
+        .modal-overlay.show { display: flex; }
+        .modal-box {
+            background: var(--white); border-radius: 16px; padding: 28px;
+            max-width: 420px; width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+        }
+        .modal-title { font-size: 18px; font-weight: 600; margin-bottom: 12px; }
+        .modal-body { font-size: 14px; color: var(--text-secondary); line-height: 1.6; margin-bottom: 20px; }
+        .modal-actions { display: flex; gap: 10px; justify-content: flex-end; }
+        .modal-btn {
+            padding: 8px 20px; border-radius: 8px; font-size: 14px;
+            cursor: pointer; border: none; transition: all 0.15s;
+        }
+        .modal-btn-secondary { background: var(--light-gray); color: var(--near-black); }
+        .modal-btn-secondary:hover { background: #e8e8ed; }
+        .modal-btn-primary { background: var(--apple-blue); color: white; }
+        .modal-btn-primary:hover { background: #0077ed; }
+
+        /* === Loading === */
+        .loading-spinner {
+            display: inline-block; width: 20px; height: 20px;
+            border: 2px solid rgba(0,113,227,0.3); border-radius: 50%;
+            border-top-color: var(--apple-blue); animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .loading-text { text-align: center; padding: 40px; color: var(--text-tertiary); }
+
+        /* === Footer === */
+        .site-footer {
+            text-align: center; padding: 24px 20px; margin-top: 40px;
+            border-top: 1px solid var(--border-color); background: var(--white);
+        }
+        .site-footer p { font-size: 13px; color: var(--text-tertiary); }
+        .site-footer a { color: var(--apple-blue); text-decoration: none; }
+
+        /* === Bookmarks Page === */
+        .page-bookmarks { max-width: 980px; margin: 0 auto; padding: 20px; }
+        .bookmarks-page-header {
+            display: flex; align-items: center; gap: 12px;
+            padding: 16px 0; border-bottom: 1px solid var(--border-color);
+            margin-bottom: 16px;
+        }
+        .bookmarks-page-header h2 { font-size: 24px; font-weight: 600; margin: 0; }
+        .bookmarks-page-count {
+            font-size: 14px; color: var(--text-tertiary);
+            background: var(--light-gray); padding: 4px 10px;
+            border-radius: 12px; margin-left: 4px;
+        }
+        .bookmarks-back-btn {
+            display: inline-flex; align-items: center; gap: 6px;
+            color: var(--apple-blue); background: none; border: none;
+            cursor: pointer; font-size: 14px; padding: 0; margin-right: 8px;
+        }
+        .bookmarks-back-btn:hover { text-decoration: underline; }
+        .bookmarks-toolbar {
+            background: var(--white); padding: 14px 16px; border-radius: 12px;
+            margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+            display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+        }
+        .bookmarks-filter-group {
+            display: flex; gap: 4px; background: var(--light-gray);
+            border-radius: 8px; padding: 3px;
+        }
+        .bookmarks-filter-btn {
+            padding: 6px 14px; border: none; border-radius: 6px;
+            font-size: 13px; cursor: pointer; background: transparent;
+            color: var(--text-secondary); transition: all 0.15s;
+        }
+        .bookmarks-filter-btn.active {
+            background: var(--white); color: var(--apple-blue);
+            font-weight: 600; box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .bookmarks-filter-btn:hover:not(.active) { color: var(--text-primary); }
+        .bookmarks-library-select {
+            padding: 7px 12px; font-size: 13px;
+            border: 1px solid var(--border-color); border-radius: 6px;
+            background: var(--white); outline: none; cursor: pointer;
+            min-width: 160px;
+        }
+        .bookmarks-library-select:focus { border-color: var(--apple-blue); }
+        .bookmarks-sort-select {
+            padding: 7px 12px; font-size: 13px;
+            border: 1px solid var(--border-color); border-radius: 6px;
+            background: var(--white); outline: none; cursor: pointer;
+            margin-left: auto;
+        }
+        .bookmarks-sort-select:focus { border-color: var(--apple-blue); }
+        .bookmark-list-card {
+            background: var(--white); border-radius: 12px; padding: 16px;
+            margin-bottom: 10px; display: flex; gap: 16px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+            transition: box-shadow 0.2s; position: relative;
+            cursor: pointer;
+        }
+        .bookmark-list-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.12); }
+        .bookmark-list-cover {
+            width: 80px; height: 112px; background: var(--light-gray);
+            border-radius: 6px; flex-shrink: 0; overflow: hidden;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 12px; color: var(--text-tertiary);
+        }
+        .bookmark-list-cover img { width: 100%; height: 100%; object-fit: cover; }
+        .bookmark-list-info { flex: 1; min-width: 0; }
+        .bookmark-list-title {
+            font-size: 16px; font-weight: 600; margin-bottom: 4px;
+            line-height: 1.3; overflow: hidden; text-overflow: ellipsis;
+            display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+        }
+        .bookmark-list-author {
+            font-size: 14px; color: var(--text-secondary); margin-bottom: 4px;
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        }
+        .bookmark-list-callnumber {
+            font-size: 13px; color: var(--text-tertiary); margin-bottom: 8px;
+        }
+        .bookmark-list-badges { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+        .bookmark-avail-badge {
+            display: inline-block; padding: 3px 10px; font-size: 12px;
+            font-weight: 500; border-radius: 4px;
+        }
+        .bookmark-avail-badge.available { background: #e8f5e9; color: var(--status-available); }
+        .bookmark-avail-badge.unavailable { background: #ffebee; color: var(--status-unavailable); }
+        .bookmark-avail-badge.loading { background: #fff3e0; color: #e65100; }
+        .bookmark-avail-badge.unknown { background: #f5f5f7; color: var(--status-unknown); }
+        .bookmark-lib-tag {
+            display: inline-block; padding: 2px 8px; font-size: 11px;
+            background: var(--light-gray); border-radius: 4px; color: var(--text-secondary);
+        }
+        .bookmark-list-delete {
+            position: absolute; top: 12px; right: 12px;
+            background: none; border: none; cursor: pointer;
+            color: var(--text-tertiary); padding: 4px; border-radius: 4px;
+            opacity: 0; transition: opacity 0.15s;
+        }
+        .bookmark-list-card:hover .bookmark-list-delete { opacity: 1; }
+        .bookmark-list-delete:hover { color: #ff3b30; background: #ffebee; }
+        .bookmarks-empty {
+            text-align: center; padding: 60px 20px; color: var(--text-secondary);
+        }
+        .bookmarks-empty-icon { font-size: 48px; margin-bottom: 12px; opacity: 0.5; }
+        .sidebar-view-all {
+            display: block; text-align: center; padding: 12px;
+            color: var(--apple-blue); font-size: 13px; cursor: pointer;
+            border-top: 1px solid var(--border-color); margin-top: 8px;
+            text-decoration: none;
+        }
+        .sidebar-view-all:hover { text-decoration: underline; background: var(--light-gray); }
+
+        /* === Ranking Section === */
+        .ranking-section { margin-top: 36px; text-align: left; }
+        .ranking-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+        .ranking-title { font-size: 22px; font-weight: 600; }
+        .ranking-view-all { color: var(--apple-blue); text-decoration: none; font-size: 14px; cursor: pointer; }
+        .ranking-filters { background: var(--white); padding: 16px; border-radius: 12px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+        .ranking-filter-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+        .ranking-filter-label { font-size: 13px; color: var(--text-tertiary); min-width: 60px; }
+        .ranking-filter-btn { padding: 5px 12px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--white); cursor: pointer; font-size: 13px; transition: all 0.15s; }
+        .ranking-filter-btn.active { background: var(--apple-blue); color: white; border-color: var(--apple-blue); }
+        .ranking-filter-select { padding: 5px 10px; border-radius: 6px; border: 1px solid var(--border-color); font-size: 13px; background: var(--white); }
+        .ranking-list { display: grid; gap: 8px; }
+        .ranking-item { display: flex; align-items: center; gap: 12px; padding: 12px; background: var(--white); border-radius: 10px; cursor: pointer; transition: box-shadow 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+        .ranking-item:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .ranking-rank { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; flex-shrink: 0; background: var(--light-gray); color: var(--text-secondary); }
+        .ranking-rank.top1 { background: #FFD700; color: #7B6100; }
+        .ranking-rank.top2 { background: #C0C0C0; color: #555; }
+        .ranking-rank.top3 { background: #CD7F32; color: #fff; }
+        .ranking-cover { width: 40px; height: 56px; border-radius: 4px; overflow: hidden; flex-shrink: 0; background: var(--light-gray); }
+        .ranking-cover img { width: 100%; height: 100%; object-fit: cover; }
+        .ranking-info { flex: 1; min-width: 0; }
+        .ranking-book-title { font-size: 14px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .ranking-book-author { font-size: 12px; color: var(--text-tertiary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .ranking-cnt { font-size: 12px; color: var(--apple-blue); font-weight: 500; white-space: nowrap; }
+
+        /* === Report Section === */
+        .report-section { margin-top: 36px; text-align: left; }
+        .report-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+        .report-title { font-size: 22px; font-weight: 600; }
+        .report-year-tabs { display: flex; gap: 6px; }
+        .report-year-btn { padding: 5px 14px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--white); cursor: pointer; font-size: 13px; transition: all 0.15s; }
+        .report-year-btn.active { background: var(--apple-blue); color: white; border-color: var(--apple-blue); }
+        .report-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+        .report-card { background: var(--white); border-radius: 12px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+        .report-card-title { font-size: 14px; font-weight: 600; margin-bottom: 12px; color: var(--text-primary); }
+        .report-chart-wrap { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+        .report-donut, .report-bar { max-width: 100%; height: auto; }
+        .report-legend { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+        .report-legend-item { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: var(--text-secondary); }
+        .report-legend-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+        .report-full-card { grid-column: 1 / -1; }
+        .report-timeline { display: flex; flex-wrap: wrap; gap: 8px; }
+        .report-timeline-item { background: var(--light-gray); border-radius: 8px; padding: 8px 12px; font-size: 12px; }
+        .report-timeline-month { font-weight: 600; color: var(--apple-blue); margin-right: 4px; }
+        .report-timeline-books { color: var(--text-secondary); }
+        .report-summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 16px; }
+        .report-summary-item { background: var(--white); border-radius: 10px; padding: 14px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+        .report-summary-value { font-size: 24px; font-weight: 700; color: var(--apple-blue); }
+        .report-summary-label { font-size: 12px; color: var(--text-tertiary); margin-top: 4px; }
+        .report-compare-section { margin-top: 24px; }
+        .report-compare-title { font-size: 18px; font-weight: 600; margin-bottom: 16px; }
+        @media (max-width: 600px) {
+            .report-grid { grid-template-columns: 1fr; }
+            .report-summary { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Top Header -->
+<div class="app-header">
+    <a class="app-logo" href="#" onclick="goHome(); return false;">
+        <svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="15" fill="#0071e3"/><path d="M8 10 L8 22 Q12 20 16 22 Q20 20 24 22 L24 10 Q20 8 16 10 Q12 8 8 10 Z" fill="white"/><line x1="16" y1="10" x2="16" y2="22" stroke="#0071e3" stroke-width="1.5"/></svg>
+        <span class="app-logo-text">上海图书馆检索</span>
+    </a>
+    <div class="header-search" id="header-search" style="display:none">
+        <select id="h-search-type" class="header-search-type">
+            <option value="all">全部</option>
+            <option value="title">书名</option>
+            <option value="author">作者</option>
+            <option value="publisher">出版社</option>
+            <option value="subject">主题</option>
+            <option value="callnumber">索书号</option>
+        </select>
+        <input type="text" id="h-search-input" class="header-search-input" placeholder="搜索图书...">
+        <button class="btn-primary" style="padding:8px 18px;font-size:14px;border-radius:8px" onclick="doSearch(1,'header')">搜索</button>
+    </div>
+    <div class="header-actions">
+        <button class="header-btn" id="btn-history" onclick="toggleSidebar('history')" title="搜索历史">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            历史
+        </button>
+        <button class="header-btn" id="btn-bookmarks" onclick="showPage('page-bookmarks'); loadBookmarksPage()" title="收藏夹">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+            收藏
+        </button>
+        <button class="header-btn" id="btn-update" onclick="checkForUpdate()" title="检查更新">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
+            <span class="update-dot" id="update-dot"></span>
+        </button>
+        <span class="version-badge" id="version-badge">v1.0.0</span>
+    </div>
+</div>
+
+<!-- Offline Banner -->
+<div class="offline-banner" id="offline-banner">
+    当前处于离线状态，仅可查看搜索历史和收藏夹
+</div>
+
+<!-- Main Body -->
+<div class="app-body">
+    <div class="main-content" id="main-content">
+        <!-- Home Page -->
+        <div id="page-home" class="page-home">
+            <h1>上海图书馆搜索</h1>
+            <p class="subtitle">快速搜索图书，查看所有分馆馆藏信息</p>
+            <div class="home-search-box">
+                <div class="home-search-row">
+                    <select id="search-type" class="home-search-type">
+                        <option value="all">全部字段</option>
+                        <option value="title">书名</option>
+                        <option value="author">作者</option>
+                        <option value="publisher">出版社</option>
+                        <option value="subject">主题</option>
+                        <option value="callnumber">索书号</option>
+                    </select>
+                    <input type="text" id="search-input" class="home-search-input" placeholder="输入关键词搜索..." autofocus>
+                    <button class="btn-primary" onclick="doSearch(1,'home')">搜索</button>
+                </div>
+                <div class="library-settings">
+                    <div class="library-settings-label">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                        偏好的图书馆（可选）
+                    </div>
+                    <select id="preferred-library" class="library-select">
+                        <option value="">全部图书馆</option>
+                        <optgroup label="市级馆">
+                            <option value="上海图书馆（淮海路馆+东馆+网借中心）">上海图书馆（淮海路馆+东馆+网借中心）</option>
+                            <option value="上海图书馆淮海路馆">上海图书馆淮海路馆</option>
+                            <option value="上海图书馆东馆">上海图书馆东馆</option>
+                            <option value="上海图书馆享借中心">上海图书馆享借中心</option>
+                        </optgroup>
+                        <optgroup label="区级馆">
+                            <option value="闵行分馆">闵行分馆</option>
+                            <option value="浦东新区分馆">浦东新区分馆</option>
+                            <option value="黄浦分馆">黄浦分馆</option>
+                            <option value="徐汇区图书馆（徐家汇书院）">徐汇区图书馆（徐家汇书院）</option>
+                            <option value="长宁区图书馆">长宁区图书馆</option>
+                            <option value="静安区图书馆">静安区图书馆</option>
+                            <option value="普陀分馆">普陀分馆</option>
+                            <option value="虹口区图书馆">虹口区图书馆</option>
+                            <option value="杨浦分馆">杨浦分馆</option>
+                            <option value="宝山分馆">宝山分馆</option>
+                            <option value="嘉定分馆">嘉定分馆</option>
+                            <option value="青浦分馆">青浦分馆</option>
+                            <option value="松江区图书馆">松江区图书馆</option>
+                            <option value="奉贤分馆">奉贤分馆</option>
+                            <option value="金山分馆">金山分馆</option>
+                            <option value="崇明分馆">崇明分馆</option>
+                        </optgroup>
+                    </select>
+                </div>
+            </div>
+            <div class="ranking-section">
+                <div class="ranking-header">
+                    <span class="ranking-title">借阅排行榜</span>
+                    <a class="ranking-view-all" id="ranking-view-all" onclick="toggleRankingShowAll()">查看全部</a>
+                </div>
+                <div class="ranking-filters">
+                    <div class="ranking-filter-row">
+                        <span class="ranking-filter-label">读者</span>
+                        <button class="ranking-filter-btn ranking-reader-btn active" data-type="adult" onclick="setRankingReaderType('adult')">成人</button>
+                        <button class="ranking-filter-btn ranking-reader-btn" data-type="children" onclick="setRankingReaderType('children')">少儿</button>
+                    </div>
+                    <div class="ranking-filter-row">
+                        <span class="ranking-filter-label">周期</span>
+                        <button class="ranking-filter-btn ranking-date-btn active" data-type="month" onclick="setRankingDateType('month')">月榜</button>
+                        <button class="ranking-filter-btn ranking-date-btn" data-type="year" onclick="setRankingDateType('year')">年榜</button>
+                    </div>
+                    <div class="ranking-filter-row">
+                        <span class="ranking-filter-label">分类</span>
+                        <select class="ranking-filter-select" id="ranking-category" onchange="setRankingCategory(this.value)">
+                            <option value="">总榜</option>
+                            <option value="A">马列主义、毛泽东思想</option>
+                            <option value="B">哲学</option>
+                            <option value="C">社会科学总论</option>
+                            <option value="D">政治、法律</option>
+                            <option value="E">军事</option>
+                            <option value="F">经济</option>
+                            <option value="G">文化、科学、教育、体育</option>
+                            <option value="H">语言、文字</option>
+                            <option value="I">文学</option>
+                            <option value="J">艺术</option>
+                            <option value="K">历史、地理</option>
+                            <option value="N">自然科学总论</option>
+                            <option value="O">数理科学和化学</option>
+                            <option value="P">天文学、地球科学</option>
+                            <option value="Q">生物科学</option>
+                            <option value="R">医药、卫生</option>
+                            <option value="S">农业科学</option>
+                            <option value="T">工业技术</option>
+                            <option value="U">交通运输</option>
+                            <option value="V">航空、航天</option>
+                            <option value="X">环境科学</option>
+                            <option value="Z">综合性图书</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="ranking-list" id="ranking-list">
+                    <div class="loading-text"><span class="loading-spinner"></span> 正在加载排行榜...</div>
+                </div>
+            </div>
+            <div class="report-section">
+                <div class="report-header">
+                    <span class="report-title">上海图书馆阅读报告</span>
+                    <div class="report-year-tabs">
+                        <button class="report-year-btn" data-year="2023" onclick="setReportYear(2023)">2023</button>
+                        <button class="report-year-btn" data-year="2024" onclick="setReportYear(2024)">2024</button>
+                        <button class="report-year-btn active" data-year="2025" onclick="setReportYear(2025)">2025</button>
+                    </div>
+                </div>
+
+                <!-- 2023 -->
+                <div class="report-year-content" id="report-2023" style="display:none">
+                    <div class="report-grid">
+                        <div class="report-card">
+                            <div class="report-card-title">活跃读者结构</div>
+                            <div class="report-chart-wrap">
+                                <svg viewBox="0 0 200 200" width="200" height="200" class="report-donut">
+                                    <circle cx="100" cy="100" r="60" fill="none" stroke="#E8E8E8" stroke-width="20"/>
+                                    <circle cx="100" cy="100" r="60" fill="none" stroke="#4A90D9" stroke-width="20" stroke-dasharray="222.4 376.99" stroke-dashoffset="0" transform="rotate(-90 100 100)"/>
+                                    <circle cx="100" cy="100" r="60" fill="none" stroke="#F5A623" stroke-width="20" stroke-dasharray="154.6 376.99" stroke-dashoffset="-222.4" transform="rotate(-90 100 100)"/>
+                                    <text x="100" y="95" text-anchor="middle" font-size="14" font-weight="600" fill="#333">59%</text>
+                                    <text x="100" y="112" text-anchor="middle" font-size="10" fill="#999">成人读者</text>
+                                </svg>
+                                <div class="report-legend">
+                                    <span class="report-legend-item"><span class="report-legend-dot" style="background:#4A90D9"></span>成人读者 59%</span>
+                                    <span class="report-legend-item"><span class="report-legend-dot" style="background:#F5A623"></span>少儿读者 41%</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="report-card">
+                            <div class="report-card-title">书刊流通量对比</div>
+                            <div class="report-chart-wrap">
+                                <svg viewBox="0 0 240 180" width="240" height="180" class="report-bar">
+                                    <text x="30" y="25" text-anchor="end" font-size="10" fill="#999">5982.5</text>
+                                    <text x="30" y="165" text-anchor="end" font-size="10" fill="#999">0</text>
+                                    <line x1="35" y1="22" x2="230" y2="22" stroke="#E8E8E8" stroke-width="1"/>
+                                    <rect x="60" y="48" width="50" height="112" rx="4" fill="#E0E0E0"/>
+                                    <text x="85" y="175" text-anchor="middle" font-size="11" fill="#666">2022</text>
+                                    <text x="85" y="43" text-anchor="middle" font-size="10" fill="#666">4860</text>
+                                    <rect x="130" y="22" width="50" height="138" rx="4" fill="#4A90D9"/>
+                                    <text x="155" y="175" text-anchor="middle" font-size="11" fill="#666">2023</text>
+                                    <text x="155" y="17" text-anchor="middle" font-size="10" fill="#4A90D9">5982.5</text>
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="report-card">
+                            <div class="report-card-title">服务机构结构</div>
+                            <div class="report-chart-wrap">
+                                <svg viewBox="0 0 200 200" width="200" height="200" class="report-donut">
+                                    <circle cx="100" cy="100" r="60" fill="none" stroke="#E8E8E8" stroke-width="20"/>
+                                    <circle cx="100" cy="100" r="60" fill="none" stroke="#4A90D9" stroke-width="20" stroke-dasharray="319.8 376.99" stroke-dashoffset="0" transform="rotate(-90 100 100)"/>
+                                    <circle cx="100" cy="100" r="60" fill="none" stroke="#7ED321" stroke-width="20" stroke-dasharray="26.4 376.99" stroke-dashoffset="-319.8" transform="rotate(-90 100 100)"/>
+                                    <circle cx="100" cy="100" r="60" fill="none" stroke="#F5A623" stroke-width="20" stroke-dasharray="27.9 376.99" stroke-dashoffset="-346.2" transform="rotate(-90 100 100)"/>
+                                    <circle cx="100" cy="100" r="60" fill="none" stroke="#D0021B" stroke-width="20" stroke-dasharray="2.9 376.99" stroke-dashoffset="-374.1" transform="rotate(-90 100 100)"/>
+                                    <text x="100" y="95" text-anchor="middle" font-size="14" font-weight="600" fill="#333">257</text>
+                                    <text x="100" y="112" text-anchor="middle" font-size="10" fill="#999">服务机构</text>
+                                </svg>
+                                <div class="report-legend">
+                                    <span class="report-legend-item"><span class="report-legend-dot" style="background:#4A90D9"></span>街镇 218</span>
+                                    <span class="report-legend-item"><span class="report-legend-dot" style="background:#7ED321"></span>区级 18</span>
+                                    <span class="report-legend-item"><span class="report-legend-dot" style="background:#F5A623"></span>其他 19</span>
+                                    <span class="report-legend-item"><span class="report-legend-dot" style="background:#D0021B"></span>市级 2</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="report-card">
+                            <div class="report-card-title">月度热门检索图书</div>
+                            <div class="report-timeline">
+                                <div class="report-timeline-item"><span class="report-timeline-month">2月</span><span class="report-timeline-books">狂飙</span></div>
+                                <div class="report-timeline-item"><span class="report-timeline-month">3月</span><span class="report-timeline-books">白鸟与蝙蝠</span></div>
+                                <div class="report-timeline-item"><span class="report-timeline-month">4月</span><span class="report-timeline-books">人生、平凡的世界</span></div>
+                                <div class="report-timeline-item"><span class="report-timeline-month">6月</span><span class="report-timeline-books">太白金星有点烦</span></div>
+                                <div class="report-timeline-item"><span class="report-timeline-month">7月</span><span class="report-timeline-books">长相思、童年、红楼梦</span></div>
+                                <div class="report-timeline-item"><span class="report-timeline-month">8月</span><span class="report-timeline-books">千里江山图</span></div>
+                                <div class="report-timeline-item"><span class="report-timeline-month">9月</span><span class="report-timeline-books">西出玉门</span></div>
+                                <div class="report-timeline-item"><span class="report-timeline-month">10月</span><span class="report-timeline-books">河边的错误、埃隆·马斯克传</span></div>
+                                <div class="report-timeline-item"><span class="report-timeline-month">11月</span><span class="report-timeline-books">世间的因、坤宁</span></div>
+                                <div class="report-timeline-item"><span class="report-timeline-month">12月</span><span class="report-timeline-books">繁花</span></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="report-summary">
+                        <div class="report-summary-item">
+                            <div class="report-summary-value">71.67万</div>
+                            <div class="report-summary-label">活跃读者</div>
+                        </div>
+                        <div class="report-summary-item">
+                            <div class="report-summary-value">5982.5万册次</div>
+                            <div class="report-summary-label">书刊流通量</div>
+                        </div>
+                        <div class="report-summary-item">
+                            <div class="report-summary-value">257家</div>
+                            <div class="report-summary-label">服务机构</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2024 -->
+                <div class="report-year-content" id="report-2024" style="display:none">
+                    <div class="report-grid">
+                        <div class="report-card">
+                            <div class="report-card-title">活跃读者结构</div>
+                            <div class="report-chart-wrap">
+                                <svg viewBox="0 0 200 200" width="200" height="200" class="report-donut">
+                                    <circle cx="100" cy="100" r="60" fill="none" stroke="#E8E8E8" stroke-width="20"/>
+                                    <circle cx="100" cy="100" r="60" fill="none" stroke="#4A90D9" stroke-width="20" stroke-dasharray="214.9 376.99" stroke-dashoffset="0" transform="rotate(-90 100 100)"/>
+                                    <circle cx="100" cy="100" r="60" fill="none" stroke="#F5A623" stroke-width="20" stroke-dasharray="162.1 376.99" stroke-dashoffset="-214.9" transform="rotate(-90 100 100)"/>
+                                    <text x="100" y="95" text-anchor="middle" font-size="14" font-weight="600" fill="#333">57%</text>
+                                    <text x="100" y="112" text-anchor="middle" font-size="10" fill="#999">成人读者</text>
+                                </svg>
+                                <div class="report-legend">
+                                    <span class="report-legend-item"><span class="report-legend-dot" style="background:#4A90D9"></span>成人读者 57%</span>
+                                    <span class="report-legend-item"><span class="report-legend-dot" style="background:#F5A623"></span>少儿读者 43%</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="report-card">
+                            <div class="report-card-title">书刊流通量对比</div>
+                            <div class="report-chart-wrap">
+                                <svg viewBox="0 0 240 180" width="240" height="180" class="report-bar">
+                                    <text x="30" y="25" text-anchor="end" font-size="10" fill="#999">6218</text>
+                                    <text x="30" y="165" text-anchor="end" font-size="10" fill="#999">0</text>
+                                    <line x1="35" y1="22" x2="230" y2="22" stroke="#E8E8E8" stroke-width="1"/>
+                                    <rect x="60" y="27" width="50" height="133" rx="4" fill="#E0E0E0"/>
+                                    <text x="85" y="175" text-anchor="middle" font-size="11" fill="#666">2023</text>
+                                    <text x="85" y="22" text-anchor="middle" font-size="10" fill="#666">5982.5</text>
+                                    <rect x="130" y="22" width="50" height="138" rx="4" fill="#4A90D9"/>
+                                    <text x="155" y="175" text-anchor="middle" font-size="11" fill="#666">2024</text>
+                                    <text x="155" y="17" text-anchor="middle" font-size="10" fill="#4A90D9">6218</text>
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="report-card">
+                            <div class="report-card-title">服务机构结构</div>
+                            <div class="report-chart-wrap">
+                                <svg viewBox="0 0 200 200" width="200" height="200" class="report-donut">
+                                    <circle cx="100" cy="100" r="60" fill="none" stroke="#E8E8E8" stroke-width="20"/>
+                                    <circle cx="100" cy="100" r="60" fill="none" stroke="#4A90D9" stroke-width="20" stroke-dasharray="319.0 376.99" stroke-dashoffset="0" transform="rotate(-90 100 100)"/>
+                                    <circle cx="100" cy="100" r="60" fill="none" stroke="#7ED321" stroke-width="20" stroke-dasharray="25.4 376.99" stroke-dashoffset="-319.0" transform="rotate(-90 100 100)"/>
+                                    <circle cx="100" cy="100" r="60" fill="none" stroke="#F5A623" stroke-width="20" stroke-dasharray="29.7 376.99" stroke-dashoffset="-344.4" transform="rotate(-90 100 100)"/>
+                                    <circle cx="100" cy="100" r="60" fill="none" stroke="#D0021B" stroke-width="20" stroke-dasharray="2.8 376.99" stroke-dashoffset="-374.1" transform="rotate(-90 100 100)"/>
+                                    <text x="100" y="95" text-anchor="middle" font-size="14" font-weight="600" fill="#333">267</text>
+                                    <text x="100" y="112" text-anchor="middle" font-size="10" fill="#999">服务机构</text>
+                                </svg>
+                                <div class="report-legend">
+                                    <span class="report-legend-item"><span class="report-legend-dot" style="background:#4A90D9"></span>街镇 226</span>
+                                    <span class="report-legend-item"><span class="report-legend-dot" style="background:#7ED321"></span>区级 18</span>
+                                    <span class="report-legend-item"><span class="report-legend-dot" style="background:#F5A623"></span>其他 21</span>
+                                    <span class="report-legend-item"><span class="report-legend-dot" style="background:#D0021B"></span>市级 2</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="report-card">
+                            <div class="report-card-title">月度热门检索图书</div>
+                            <div class="report-timeline">
+                                <div class="report-timeline-item"><span class="report-timeline-month">1月</span><span class="report-timeline-books">三体、流浪地球</span></div>
+                                <div class="report-timeline-item"><span class="report-timeline-month">3月</span><span class="report-timeline-books">你当像鸟飞往你的山</span></div>
+                                <div class="report-timeline-item"><span class="report-timeline-month">4月</span><span class="report-timeline-books">置身事内</span></div>
+                                <div class="report-timeline-item"><span class="report-timeline-month">5月</span><span class="report-timeline-books">长安的荔枝</span></div>
+                                <div class="report-timeline-item"><span class="report-timeline-month">7月</span><span class="report-timeline-books">小王子、活着</span></div>
+                                <div class="report-timeline-item"><span class="report-timeline-month">8月</span><span class="report-timeline-books">云边有个小卖部</span></div>
+                                <div class="report-timeline-item"><span class="report-timeline-month">9月</span><span class="report-timeline-books">鬼吹灯系列</span></div>
+                                <div class="report-timeline-item"><span class="report-timeline-month">10月</span><span class="report-timeline-books">纳瓦尔宝典</span></div>
+                                <div class="report-timeline-item"><span class="report-timeline-month">11月</span><span class="report-timeline-books">秋园</span></div>
+                                <div class="report-timeline-item"><span class="report-timeline-month">12月</span><span class="report-timeline-books">年度人文经典合集</span></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="report-summary">
+                        <div class="report-summary-item">
+                            <div class="report-summary-value">78.20万</div>
+                            <div class="report-summary-label">活跃读者</div>
+                        </div>
+                        <div class="report-summary-item">
+                            <div class="report-summary-value">6218万册次</div>
+                            <div class="report-summary-label">书刊流通量</div>
+                        </div>
+                        <div class="report-summary-item">
+                            <div class="report-summary-value">267家</div>
+                            <div class="report-summary-label">服务机构</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2025 -->
+                <div class="report-year-content" id="report-2025" style="display:none">
+                    <div class="report-grid">
+                        <div class="report-card">
+                            <div class="report-card-title">活跃读者结构</div>
+                            <div class="report-chart-wrap">
+                                <svg viewBox="0 0 200 200" width="200" height="200" class="report-donut">
+                                    <circle cx="100" cy="100" r="60" fill="none" stroke="#E8E8E8" stroke-width="20"/>
+                                    <circle cx="100" cy="100" r="60" fill="none" stroke="#4A90D9" stroke-width="20" stroke-dasharray="207.3 376.99" stroke-dashoffset="0" transform="rotate(-90 100 100)"/>
+                                    <circle cx="100" cy="100" r="60" fill="none" stroke="#F5A623" stroke-width="20" stroke-dasharray="169.6 376.99" stroke-dashoffset="-207.3" transform="rotate(-90 100 100)"/>
+                                    <text x="100" y="95" text-anchor="middle" font-size="14" font-weight="600" fill="#333">55%</text>
+                                    <text x="100" y="112" text-anchor="middle" font-size="10" fill="#999">成人读者</text>
+                                </svg>
+                                <div class="report-legend">
+                                    <span class="report-legend-item"><span class="report-legend-dot" style="background:#4A90D9"></span>成人读者 55%</span>
+                                    <span class="report-legend-item"><span class="report-legend-dot" style="background:#F5A623"></span>少儿读者 45%</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="report-card">
+                            <div class="report-card-title">书刊流通量对比</div>
+                            <div class="report-chart-wrap">
+                                <svg viewBox="0 0 240 180" width="240" height="180" class="report-bar">
+                                    <text x="30" y="25" text-anchor="end" font-size="10" fill="#999">6572</text>
+                                    <text x="30" y="165" text-anchor="end" font-size="10" fill="#999">0</text>
+                                    <line x1="35" y1="22" x2="230" y2="22" stroke="#E8E8E8" stroke-width="1"/>
+                                    <rect x="60" y="29" width="50" height="131" rx="4" fill="#E0E0E0"/>
+                                    <text x="85" y="175" text-anchor="middle" font-size="11" fill="#666">2024</text>
+                                    <text x="85" y="24" text-anchor="middle" font-size="10" fill="#666">6218</text>
+                                    <rect x="130" y="22" width="50" height="138" rx="4" fill="#4A90D9"/>
+                                    <text x="155" y="175" text-anchor="middle" font-size="11" fill="#666">2025</text>
+                                    <text x="155" y="17" text-anchor="middle" font-size="10" fill="#4A90D9">6572</text>
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="report-card">
+                            <div class="report-card-title">服务机构结构</div>
+                            <div class="report-chart-wrap">
+                                <svg viewBox="0 0 200 200" width="200" height="200" class="report-donut">
+                                    <circle cx="100" cy="100" r="60" fill="none" stroke="#E8E8E8" stroke-width="20"/>
+                                    <circle cx="100" cy="100" r="60" fill="none" stroke="#4A90D9" stroke-width="20" stroke-dasharray="318.1 376.99" stroke-dashoffset="0" transform="rotate(-90 100 100)"/>
+                                    <circle cx="100" cy="100" r="60" fill="none" stroke="#7ED321" stroke-width="20" stroke-dasharray="24.7 376.99" stroke-dashoffset="-318.1" transform="rotate(-90 100 100)"/>
+                                    <circle cx="100" cy="100" r="60" fill="none" stroke="#F5A623" stroke-width="20" stroke-dasharray="31.5 376.99" stroke-dashoffset="-342.8" transform="rotate(-90 100 100)"/>
+                                    <circle cx="100" cy="100" r="60" fill="none" stroke="#D0021B" stroke-width="20" stroke-dasharray="2.7 376.99" stroke-dashoffset="-374.3" transform="rotate(-90 100 100)"/>
+                                    <text x="100" y="95" text-anchor="middle" font-size="14" font-weight="600" fill="#333">275</text>
+                                    <text x="100" y="112" text-anchor="middle" font-size="10" fill="#999">服务机构</text>
+                                </svg>
+                                <div class="report-legend">
+                                    <span class="report-legend-item"><span class="report-legend-dot" style="background:#4A90D9"></span>街镇 232</span>
+                                    <span class="report-legend-item"><span class="report-legend-dot" style="background:#7ED321"></span>区级 18</span>
+                                    <span class="report-legend-item"><span class="report-legend-dot" style="background:#F5A623"></span>其他 23</span>
+                                    <span class="report-legend-item"><span class="report-legend-dot" style="background:#D0021B"></span>市级 2</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="report-card">
+                            <div class="report-card-title">月度热门检索图书</div>
+                            <div class="report-timeline">
+                                <div class="report-timeline-item"><span class="report-timeline-month">2月</span><span class="report-timeline-books">尘埃落定</span></div>
+                                <div class="report-timeline-item"><span class="report-timeline-month">3月</span><span class="report-timeline-books">蛤蟆先生去看心理医生</span></div>
+                                <div class="report-timeline-item"><span class="report-timeline-month">4月</span><span class="report-timeline-books">漫长的告别</span></div>
+                                <div class="report-timeline-item"><span class="report-timeline-month">5月</span><span class="report-timeline-books">平凡的世界（重读热潮）</span></div>
+                                <div class="report-timeline-item"><span class="report-timeline-month">6月</span><span class="report-timeline-books">科普百科系列</span></div>
+                                <div class="report-timeline-item"><span class="report-timeline-month">7月</span><span class="report-timeline-books">哈利·波特系列</span></div>
+                                <div class="report-timeline-item"><span class="report-timeline-month">8月</span><span class="report-timeline-books">中国通史</span></div>
+                                <div class="report-timeline-item"><span class="report-timeline-month">9月</span><span class="report-timeline-books">心理学通识</span></div>
+                                <div class="report-timeline-item"><span class="report-timeline-month">10月</span><span class="report-timeline-books">置身事内</span></div>
+                                <div class="report-timeline-item"><span class="report-timeline-month">12月</span><span class="report-timeline-books">年度经典文学合集</span></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="report-summary">
+                        <div class="report-summary-item">
+                            <div class="report-summary-value">83.50万</div>
+                            <div class="report-summary-label">活跃读者</div>
+                        </div>
+                        <div class="report-summary-item">
+                            <div class="report-summary-value">6572万册次</div>
+                            <div class="report-summary-label">书刊流通量</div>
+                        </div>
+                        <div class="report-summary-item">
+                            <div class="report-summary-value">275家</div>
+                            <div class="report-summary-label">服务机构</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Three-year comparison (always visible) -->
+                <div class="report-compare-section">
+                    <div class="report-compare-title">三年核心数据对比</div>
+                    <div class="report-grid">
+                        <div class="report-card">
+                            <div class="report-card-title">三年书刊流通量走势</div>
+                            <div class="report-chart-wrap">
+                                <svg viewBox="0 0 300 180" width="300" height="180" class="report-bar">
+                                    <text x="30" y="25" text-anchor="end" font-size="10" fill="#999">6572</text>
+                                    <text x="30" y="165" text-anchor="end" font-size="10" fill="#999">0</text>
+                                    <line x1="35" y1="22" x2="290" y2="22" stroke="#E8E8E8" stroke-width="1"/>
+                                    <rect x="55" y="34" width="55" height="126" rx="4" fill="#B0C4DE"/>
+                                    <text x="82" y="175" text-anchor="middle" font-size="11" fill="#666">2023</text>
+                                    <text x="82" y="29" text-anchor="middle" font-size="10" fill="#666">5982.5</text>
+                                    <rect x="125" y="29" width="55" height="131" rx="4" fill="#6495ED"/>
+                                    <text x="152" y="175" text-anchor="middle" font-size="11" fill="#666">2024</text>
+                                    <text x="152" y="24" text-anchor="middle" font-size="10" fill="#6495ED">6218</text>
+                                    <rect x="195" y="22" width="55" height="138" rx="4" fill="#4169E1"/>
+                                    <text x="222" y="175" text-anchor="middle" font-size="11" fill="#666">2025</text>
+                                    <text x="222" y="17" text-anchor="middle" font-size="10" fill="#4169E1">6572</text>
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="report-card">
+                            <div class="report-card-title">成人/少儿读者占比变化</div>
+                            <div class="report-chart-wrap">
+                                <svg viewBox="0 0 300 180" width="300" height="180" class="report-bar">
+                                    <text x="30" y="25" text-anchor="end" font-size="10" fill="#999">59%</text>
+                                    <text x="30" y="165" text-anchor="end" font-size="10" fill="#999">0</text>
+                                    <line x1="35" y1="22" x2="290" y2="22" stroke="#E8E8E8" stroke-width="1"/>
+                                    <!-- 2023 -->
+                                    <rect x="55" y="22" width="25" height="138" rx="3" fill="#4A90D9"/>
+                                    <rect x="82" y="64" width="25" height="96" rx="3" fill="#F5A623"/>
+                                    <text x="82" y="175" text-anchor="middle" font-size="11" fill="#666">2023</text>
+                                    <!-- 2024 -->
+                                    <rect x="125" y="27" width="25" height="133" rx="3" fill="#4A90D9"/>
+                                    <rect x="152" y="59" width="25" height="101" rx="3" fill="#F5A623"/>
+                                    <text x="152" y="175" text-anchor="middle" font-size="11" fill="#666">2024</text>
+                                    <!-- 2025 -->
+                                    <rect x="195" y="31" width="25" height="129" rx="3" fill="#4A90D9"/>
+                                    <rect x="222" y="55" width="25" height="105" rx="3" fill="#F5A623"/>
+                                    <text x="222" y="175" text-anchor="middle" font-size="11" fill="#666">2025</text>
+                                </svg>
+                                <div class="report-legend">
+                                    <span class="report-legend-item"><span class="report-legend-dot" style="background:#4A90D9"></span>成人读者</span>
+                                    <span class="report-legend-item"><span class="report-legend-dot" style="background:#F5A623"></span>少儿读者</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="features-grid">
+                <div class="feature-card"><div class="feature-icon">🔍</div><div class="feature-title">快速搜索</div><div class="feature-desc">支持书名、作者等多维度搜索</div></div>
+                <div class="feature-card"><div class="feature-icon">📚</div><div class="feature-title">馆藏查询</div><div class="feature-desc">实时查看各分馆借阅状态</div></div>
+                <div class="feature-card"><div class="feature-icon">⭐</div><div class="feature-title">收藏夹</div><div class="feature-desc">保存常用图书，离线可查看</div></div>
+                <div class="feature-card"><div class="feature-icon">📍</div><div class="feature-title">偏好图书馆</div><div class="feature-desc">设置常用馆，优先显示馆藏</div></div>
+                <div class="feature-card"><div class="feature-icon">📖</div><div class="feature-title">索书号查询</div><div class="feature-desc">按索书号定位图书位置</div></div>
+                <div class="feature-card"><div class="feature-icon">🌐</div><div class="feature-title">全分馆覆盖</div><div class="feature-desc">覆盖上图及16个区级分馆</div></div>
+            </div>
+        </div>
+
+        <!-- Search Results Page -->
+        <div id="page-results" class="page-results" style="display:none">
+            <div class="results-header">
+                <h2 id="results-title">搜索中...</h2>
+                <p id="results-count">正在搜索...</p>
+            </div>
+            <div class="search-toolbar">
+                <div class="toolbar-search-row">
+                    <select id="search-type-2" class="toolbar-type">
+                        <option value="all">全部字段</option>
+                        <option value="title">书名</option>
+                        <option value="author">作者</option>
+                        <option value="publisher">出版社</option>
+                        <option value="subject">主题</option>
+                        <option value="callnumber">索书号</option>
+                    </select>
+                    <input type="text" id="search-input-2" class="toolbar-input" placeholder="继续搜索...">
+                    <button class="btn-primary" style="padding:10px 20px;font-size:14px;border-radius:8px" onclick="doSearch(1,'toolbar')">搜索</button>
+                </div>
+                <div class="library-filter-section" id="library-filter-section">
+                    <div class="library-filter-header">
+                        <span class="library-filter-label">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                            <span id="library-filter-label">图书馆筛选</span>
+                        </span>
+                        <div class="library-filter-actions">
+                            <button class="btn-link" onclick="clearLibraryFilter()">清除筛选</button>
+                            <button class="btn-link" onclick="showAllLibraries()">查看全部馆藏</button>
+                        </div>
+                    </div>
+                    <select id="library-filter" class="library-filter-select" onchange="applyLibraryFilter()">
+                        <option value="">全部图书馆</option>
+                        <optgroup label="市级馆">
+                            <option value="上海图书馆（淮海路馆+东馆+网借中心）">上海图书馆（淮海路馆+东馆+网借中心）</option>
+                            <option value="上海图书馆淮海路馆">上海图书馆淮海路馆</option>
+                            <option value="上海图书馆东馆">上海图书馆东馆</option>
+                            <option value="上海图书馆享借中心">上海图书馆享借中心</option>
+                        </optgroup>
+                        <optgroup label="区级馆">
+                            <option value="闵行分馆">闵行分馆</option>
+                            <option value="浦东新区分馆">浦东新区分馆</option>
+                            <option value="黄浦分馆">黄浦分馆</option>
+                            <option value="徐汇区图书馆（徐家汇书院）">徐汇区图书馆（徐家汇书院）</option>
+                            <option value="长宁区图书馆">长宁区图书馆</option>
+                            <option value="静安区图书馆">静安区图书馆</option>
+                            <option value="普陀分馆">普陀分馆</option>
+                            <option value="虹口区图书馆">虹口区图书馆</option>
+                            <option value="杨浦分馆">杨浦分馆</option>
+                            <option value="宝山分馆">宝山分馆</option>
+                            <option value="嘉定分馆">嘉定分馆</option>
+                            <option value="青浦分馆">青浦分馆</option>
+                            <option value="松江区图书馆">松江区图书馆</option>
+                            <option value="奉贤分馆">奉贤分馆</option>
+                            <option value="金山分馆">金山分馆</option>
+                            <option value="崇明分馆">崇明分馆</option>
+                        </optgroup>
+                    </select>
+                </div>
+            </div>
+            <div id="results-list"></div>
+            <div id="pagination" class="pagination"></div>
+        </div>
+
+        <!-- Detail Page -->
+        <div id="page-detail" class="page-detail" style="display:none">
+            <button class="back-link" onclick="goBack()">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+                返回
+            </button>
+            <div class="book-detail">
+                <div id="detail-content">
+                    <div class="loading-text"><span class="loading-spinner"></span> 正在加载...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bookmarks Page -->
+        <div id="page-bookmarks" class="page-bookmarks" style="display:none">
+            <div class="bookmarks-page-header">
+                <button class="bookmarks-back-btn" onclick="goHome()">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+                    返回
+                </button>
+                <h2>我的收藏</h2>
+                <span class="bookmarks-page-count" id="bookmarks-page-count">0</span>
+            </div>
+            <div class="bookmarks-toolbar" id="bookmarks-toolbar">
+                <div class="bookmarks-filter-group">
+                    <button class="bookmarks-filter-btn active" data-filter="all" onclick="setBookmarksFilter('all')">全部</button>
+                    <button class="bookmarks-filter-btn" data-filter="available" onclick="setBookmarksFilter('available')">可借</button>
+                    <button class="bookmarks-filter-btn" data-filter="unavailable" onclick="setBookmarksFilter('unavailable')">已借出</button>
+                </div>
+                <select class="bookmarks-library-select" id="bookmarks-library-select" onchange="setBookmarksLibraryFilter(this.value)">
+                    <option value="">全部图书馆</option>
+                </select>
+                <select class="bookmarks-sort-select" id="bookmarks-sort-select" onchange="setBookmarksSort(this.value)">
+                    <option value="time">收藏时间</option>
+                    <option value="avail_desc">可借数量↓</option>
+                    <option value="avail_asc">可借数量↑</option>
+                </select>
+            </div>
+            <div id="bookmarks-list"></div>
+        </div>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <span class="sidebar-title" id="sidebar-title">搜索历史</span>
+            <button class="sidebar-close" onclick="closeSidebar()">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+        </div>
+        <div class="sidebar-tabs">
+            <button class="sidebar-tab active" id="tab-history" onclick="switchSidebarTab('history')">历史</button>
+            <button class="sidebar-tab" id="tab-bookmarks" onclick="switchSidebarTab('bookmarks')">收藏</button>
+        </div>
+        <div class="sidebar-body" id="sidebar-body"></div>
+    </div>
+</div>
+
+<!-- Update Modal -->
+<div class="modal-overlay" id="update-modal">
+    <div class="modal-box">
+        <div class="modal-title" id="modal-title">检查更新</div>
+        <div class="modal-body" id="modal-body">正在检查更新...</div>
+        <div class="modal-actions" id="modal-actions">
+            <button class="modal-btn modal-btn-secondary" onclick="closeModal()">关闭</button>
+        </div>
+    </div>
+</div>
+
+<script>
+window.onerror = function(msg, url, line, col, err) {
+    console.error('JS Error:', msg, 'at line', line);
+    var d = document.getElementById('ranking-list');
+    if (d) d.innerHTML = '<div style="color:red;padding:10px">JS Error: ' + msg + ' (line ' + line + ')</div>';
+    return false;
+};
+const BASE_URL = 'https://vufind.library.sh.cn';
+let currentQuery = '';
+let currentType = 'all';
+let currentPage = 1;
+let totalPages = 1;
+let currentFilters = { library: '' };
+let preferredLibrary = '';
+let sidebarOpen = false;
+let sidebarTab = 'history';
+let allDetailHoldings = [];
+let detailFilterLibrary = '';
+let detailShowAllMode = false;
+let bookmarkCache = new Set();
+var bookmarksFilter = 'all'; // 'all', 'available', 'unavailable'
+var bookmarksLibraryFilter = '';
+var bookmarksSort = 'time'; // 'time', 'avail_desc', 'avail_asc'
+var bookmarksData = []; // cached bookmarks with holdings data
+
+// === Init ===
+(function init() {
+    // Load preferred library
+    preferredLibrary = localStorage.getItem('preferredLibrary') || '';
+    if (preferredLibrary) {
+        document.getElementById('preferred-library').value = preferredLibrary;
+        currentFilters.library = preferredLibrary;
+    }
+
+    // Enter key handlers
+    document.getElementById('search-input').addEventListener('keypress', function(e) { if (e.key === 'Enter') doSearch(1,'home'); });
+    document.getElementById('search-input-2').addEventListener('keypress', function(e) { if (e.key === 'Enter') doSearch(1,'toolbar'); });
+    document.getElementById('h-search-input').addEventListener('keypress', function(e) { if (e.key === 'Enter') doSearch(1,'header'); });
+
+    // Save preferred library on change
+    document.getElementById('preferred-library').addEventListener('change', function() {
+        preferredLibrary = this.value;
+        localStorage.setItem('preferredLibrary', preferredLibrary);
+        currentFilters.library = preferredLibrary;
+    });
+
+    // Online/offline detection
+    window.addEventListener('online', updateOnlineStatus);
+    window.addEventListener('offline', updateOnlineStatus);
+    updateOnlineStatus();
+
+    // Load bookmarks cache
+    loadBookmarkCache();
+
+    // Check for update silently
+    setTimeout(checkForUpdateSilent, 2000);
+
+    // Load ranking and report after all global vars are initialized
+    setTimeout(function() { loadRanking(); setReportYear(2025); }, 100);
+})();
+
+function updateOnlineStatus() {
+    var banner = document.getElementById('offline-banner');
+    if (!navigator.onLine) {
+        banner.classList.add('show');
+    } else {
+        banner.classList.remove('show');
+    }
+}
+
+// === Page Navigation ===
+function showPage(pageId) {
+    ['page-home', 'page-results', 'page-detail', 'page-bookmarks'].forEach(function(id) {
+        document.getElementById(id).style.display = id === pageId ? '' : 'none';
+    });
+    var headerSearch = document.getElementById('header-search');
+    headerSearch.style.display = (pageId === 'page-home' || pageId === 'page-bookmarks') ? 'none' : 'flex';
+    document.getElementById('main-content').scrollTop = 0;
+}
+
+// 记录进入详情页前的页面
+var previousPage = 'page-home';
+
+function goHome() {
+    showPage('page-home');
+    document.getElementById('search-input').focus();
+}
+
+function goBack() {
+    showPage(previousPage);
+}
+
+// === Search ===
+function doSearch(page, source) {
+    var input1 = document.getElementById('search-input');
+    var input2 = document.getElementById('search-input-2');
+    var inputH = document.getElementById('h-search-input');
+    var type1 = document.getElementById('search-type');
+    var type2 = document.getElementById('search-type-2');
+    var typeH = document.getElementById('h-search-type');
+
+    // 根据触发源优先取对应输入框的值
+    if (source === 'header' && inputH.value) {
+        currentQuery = inputH.value;
+        currentType = typeH.value;
+    } else if (source === 'toolbar' && input2.value) {
+        currentQuery = input2.value;
+        currentType = type2.value;
+    } else if (source === 'home' && input1.value) {
+        currentQuery = input1.value;
+        currentType = type1.value;
+    } else {
+        // fallback: 取最近有值的输入
+        currentQuery = inputH.value || input2.value || input1.value;
+        currentType = typeH.value || type2.value || type1.value;
+    }
+    currentPage = page;
+
+    if (!currentQuery) return;
+
+    // Sync all search inputs
+    input1.value = currentQuery;
+    input2.value = currentQuery;
+    inputH.value = currentQuery;
+    type1.value = currentType;
+    type2.value = currentType;
+    typeH.value = currentType;
+
+    // Init library filter
+    if (preferredLibrary && !currentFilters.library) {
+        currentFilters.library = preferredLibrary;
+        document.getElementById('library-filter').value = preferredLibrary;
+        document.getElementById('library-filter-label').textContent = '偏好图书馆: ' + preferredLibrary;
+    }
+
+    showPage('page-results');
+    document.getElementById('results-title').textContent = '搜索: ' + currentQuery;
+    document.getElementById('results-count').textContent = '正在搜索...';
+    document.getElementById('results-list').innerHTML = '<div class="loading-text"><span class="loading-spinner"></span> 正在搜索...</div>';
+    document.getElementById('pagination').innerHTML = '';
+
+    var apiUrl = '/api/search?q=' + encodeURIComponent(currentQuery) + '&type=' + currentType + '&page=' + page;
+    if (currentFilters.library) apiUrl += '&library=' + encodeURIComponent(currentFilters.library);
+
+    console.log('[DEBUG] Fetching:', apiUrl);
+    fetch(apiUrl, { mode: 'same-origin', credentials: 'same-origin' }).then(function(r) {
+        console.log('[DEBUG] Response status:', r.status, 'ok:', r.ok);
+        if (!r.ok) {
+            throw new Error('HTTP ' + r.status + ' ' + r.statusText);
+        }
+        return r.text();
+    }).then(function(text) {
+        console.log('[DEBUG] Response length:', text.length, 'preview:', text.substring(0, 100));
+        var data;
+        try { data = JSON.parse(text); } catch(e) { throw new Error('JSON解析失败: ' + e.message); }
+        if (data.success) {
+            var total = data.statistics.total_results || 0;
+            totalPages = data.statistics.total_pages || 1;
+            var displayTotal;
+            if (total > 0) displayTotal = total + '+';
+            else if (totalPages > 1) displayTotal = (totalPages * 20) + '+';
+            else displayTotal = data.books.length;
+            document.getElementById('results-count').textContent = '找到 ' + displayTotal + ' 条结果';
+            renderResults(data.books);
+            renderPagination(data.statistics.page || page, totalPages);
+        } else {
+            document.getElementById('results-list').innerHTML = '<div class="error-message">搜索出错: ' + (data.error || '未知错误') + '</div>';
+        }
+    }).catch(function(err) {
+        console.error('[DEBUG] Fetch error:', err);
+        document.getElementById('results-list').innerHTML = '<div class="error-message">请求失败: ' + (err.message || '请检查网络连接后重试') + '</div>';
+    });
+}
+
+function renderResults(books) {
+    var container = document.getElementById('results-list');
+    if (!books || books.length === 0) {
+        container.innerHTML = '<div class="no-results"><div class="no-results-icon">📚</div><p>未找到相关图书</p><p style="font-size:14px;margin-top:8px;color:var(--text-tertiary)">试试其他关键词？</p></div>';
+        return;
+    }
+    container.innerHTML = books.map(function(book) {
+        var coverUrl = book.cover_url
+            ? (book.cover_url.startsWith('http') ? book.cover_url : BASE_URL + book.cover_url)
+            : BASE_URL + '/Cover/Show?instanceId=' + book.record_id;
+        var isBookmarked = bookmarkCache.has(book.record_id);
+        return '<div class="book-card" onclick="showDetail(\'' + book.record_id + '\', event)">' +
+            '<div class="book-cover"><img src="' + coverUrl + '" loading="lazy" onerror="this.style.display=\'none\';this.parentElement.textContent=\'无封面\'"></div>' +
+            '<div class="book-info">' +
+                '<div class="book-title">' + escapeHtml(book.title) + '</div>' +
+                '<p class="book-meta">' + (book.author ? '著者：' + escapeHtml(book.author) : '著者：未知') + '</p>' +
+                '<p class="book-meta">' + (book.publisher ? escapeHtml(book.publisher) : '') + (book.publish_year ? (book.publisher ? ' | ' : '') + book.publish_year : '') + '</p>' +
+                (book.call_number ? '<p class="book-meta">索书号：' + escapeHtml(book.call_number) + '</p>' : '') +
+                '<span class="book-status status-loading" id="status-' + book.record_id + '">加载馆藏中...</span>' +
+            '</div>' +
+            '<button class="bookmark-btn-card' + (isBookmarked ? ' bookmarked' : '') + '" onclick="toggleBookmarkCard(\'' + book.record_id + '\',\'' + escapeAttr(book.title) + '\',\'' + escapeAttr(book.author || '') + '\',\'' + escapeAttr(coverUrl) + '\',event)" title="' + (isBookmarked ? '取消收藏' : '收藏') + '">' +
+                '<svg width="18" height="18" viewBox="0 0 24 24" fill="' + (isBookmarked ? 'currentColor' : 'none') + '" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>' +
+            '</button>' +
+        '</div>';
+    }).join('');
+
+    // Async load holdings status
+    books.forEach(function(book) {
+        fetch('/api/holdings/' + book.record_id).then(function(r) { return r.json(); }).then(function(data) {
+            if (data.success && data.holdings) {
+                var filterLib = currentFilters.library || preferredLibrary;
+                var displayHoldings = filterLib ? filterHoldingsByLibrary(data.holdings, filterLib) : data.holdings;
+                var available = calculateAvailableCount(displayHoldings);
+                var el = document.getElementById('status-' + book.record_id);
+                if (el) {
+                    if (available > 0) {
+                        el.className = 'book-status status-available';
+                        el.textContent = '可借 ' + available + ' 本';
+                    } else if (displayHoldings.length > 0) {
+                        el.className = 'book-status status-unavailable';
+                        el.textContent = '已借出 (' + displayHoldings.length + '本)';
+                    } else if (filterLib && data.holdings.length > 0) {
+                        el.className = 'book-status status-unknown';
+                        el.textContent = data.holdings.length + '本(其他馆)';
+                    } else {
+                        el.className = 'book-status status-unknown';
+                        el.textContent = '暂无馆藏';
+                    }
+                }
+            }
+        }).catch(function() {});
+    });
+}
+
+function renderPagination(cur, total) {
+    var container = document.getElementById('pagination');
+    var html = '';
+    if (cur > 1) html += '<a href="#" onclick="doSearch(' + (cur-1) + ');return false">&laquo; 上一页</a>';
+    var start = Math.max(1, cur - 2);
+    var end = Math.min(total, cur + 2);
+    if (start > 1) {
+        html += '<a href="#" onclick="doSearch(1);return false">1</a>';
+        if (start > 2) html += '<span class="ellipsis">...</span>';
+    }
+    for (var i = start; i <= end; i++) {
+        if (i === cur) html += '<span class="current">' + i + '</span>';
+        else html += '<a href="#" onclick="doSearch(' + i + ');return false">' + i + '</a>';
+    }
+    if (end < total) {
+        if (end < total - 1) html += '<span class="ellipsis">...</span>';
+        html += '<a href="#" onclick="doSearch(' + total + ');return false">' + total + '</a>';
+    }
+    if (cur < total) html += '<a href="#" onclick="doSearch(' + (cur+1) + ');return false">下一页 &raquo;</a>';
+    container.innerHTML = html;
+}
+
+// === Library Filter ===
+function applyLibraryFilter() {
+    var sel = document.getElementById('library-filter');
+    var label = document.getElementById('library-filter-label');
+    currentFilters.library = sel.value;
+    if (sel.value) {
+        label.textContent = '筛选: ' + sel.value;
+    } else {
+        label.textContent = preferredLibrary ? '偏好图书馆: ' + preferredLibrary : '图书馆筛选';
+    }
+    doSearch(1);
+}
+
+function clearLibraryFilter() {
+    document.getElementById('library-filter').value = '';
+    currentFilters.library = '';
+    preferredLibrary = '';
+    localStorage.removeItem('preferredLibrary');
+    document.getElementById('preferred-library').value = '';
+    document.getElementById('library-filter-label').textContent = '图书馆筛选';
+    doSearch(1);
+}
+
+function showAllLibraries() {
+    document.getElementById('library-filter').value = '';
+    currentFilters.library = '';
+    document.getElementById('library-filter-label').textContent = '显示全部馆藏';
+    doSearch(1);
+}
+
+// === Detail ===
+function showDetail(recordId, event) {
+    if (event && event.target.closest('.bookmark-btn-card')) return;
+    // 记录来源页面，用于返回按钮
+    var currentPage = ['page-home', 'page-results', 'page-bookmarks'].find(function(id) {
+        return document.getElementById(id).style.display !== 'none';
+    });
+    if (currentPage) previousPage = currentPage;
+    // 更新返回按钮文案
+    var backBtn = document.querySelector('#page-detail .back-link');
+    if (backBtn) {
+        var backText = previousPage === 'page-results' ? '返回搜索结果' : '返回';
+        backBtn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg> ' + backText;
+    }
+    showPage('page-detail');
+    document.getElementById('detail-content').innerHTML = '<div class="loading-text"><span class="loading-spinner"></span> 正在加载详情...</div>';
+    allDetailHoldings = [];
+    detailFilterLibrary = '';
+    detailShowAllMode = false;
+
+    fetch('/api/record/' + recordId).then(function(r) { return r.json(); }).then(function(data) {
+        if (!data.book && !data.holdings) {
+            document.getElementById('detail-content').innerHTML = '<div class="error-message">加载失败</div>';
+            return;
+        }
+        var book = data.book || {};
+        var holdings = (data.holdings && data.holdings.holdings) || [];
+        allDetailHoldings = holdings;
+
+        if (preferredLibrary && !detailShowAllMode) {
+            var libs = getLibraryOptions();
+            detailFilterLibrary = findMatchingLibrary(preferredLibrary, libs);
+        }
+
+        renderBookDetail(book, recordId);
+    }).catch(function(err) {
+        document.getElementById('detail-content').innerHTML = '<div class="error-message">加载失败: ' + err.message + '</div>';
+    });
+}
+
+function renderBookDetail(book, recordId) {
+    var holdings = getDisplayHoldings();
+    var availableCount = calculateAvailableCount(holdings);
+    var coverUrl = book.cover_url
+        ? (book.cover_url.startsWith('http') ? book.cover_url : BASE_URL + book.cover_url)
+        : BASE_URL + '/Cover/Show?instanceId=' + recordId;
+    var isBookmarked = bookmarkCache.has(recordId);
+
+    var html = '<div class="book-header">' +
+        '<div class="book-cover-large"><img src="' + coverUrl + '" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'"><span class="book-cover-placeholder" style="display:none">无封面</span></div>' +
+        '<div class="book-main-info">' +
+            '<h1>' + escapeHtml(book.title || '未知书名') + '</h1>' +
+            '<p class="book-author">' + escapeHtml(book.author || '未知作者') + '</p>' +
+            '<ul class="book-meta-list">' +
+                '<li><span class="label">出版社</span><span class="value">' + escapeHtml(book.publisher || '未知') + '</span></li>' +
+                '<li><span class="label">出版年</span><span class="value">' + (book.publish_year || '未知') + '</span></li>' +
+                '<li><span class="label">索书号</span><span class="value">' + escapeHtml(book.call_number || '未知') + '</span></li>' +
+                '<li><span class="label">ISBN</span><span class="value">' + (book.isbn || '未知') + '</span></li>' +
+            '</ul>' +
+            '<button class="detail-bookmark-btn' + (isBookmarked ? ' bookmarked' : '') + '" id="detail-bookmark-btn" onclick="toggleBookmarkDetail(\'' + recordId + '\',\'' + escapeAttr(book.title || '') + '\',\'' + escapeAttr(book.author || '') + '\',\'' + escapeAttr(coverUrl) + '\')">' +
+                '<svg width="16" height="16" viewBox="0 0 24 24" fill="' + (isBookmarked ? 'currentColor' : 'none') + '" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>' +
+                (isBookmarked ? '已收藏' : '收藏') +
+            '</button>' +
+        '</div></div>';
+
+    if (book.summary) {
+        html += '<div class="summary-section"><h3>内容简介</h3><p>' + escapeHtml(book.summary) + '</p></div>';
+    }
+
+    html += '<div class="holdings-section">' +
+        '<div class="holdings-header">' +
+            '<h2>馆藏信息 (' + holdings.length + '本，可借' + availableCount + '本)</h2>' +
+            '<a href="' + BASE_URL + '/Record/' + recordId + '" target="_blank" class="btn-official">' +
+                '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3"/></svg>' +
+                '官网详情</a>' +
+        '</div>' +
+        '<div id="holdings-table-container"></div>' +
+    '</div>';
+
+    document.getElementById('detail-content').innerHTML = html;
+    renderHoldingsTable();
+}
+
+function renderHoldingsTable() {
+    var holdings = getDisplayHoldings();
+    var container = document.getElementById('holdings-table-container');
+    if (!container) return;
+    var libraries = getLibraryOptions();
+    var totalAvailable = calculateAvailableCount(allDetailHoldings);
+
+    var filterSection = '<div class="library-filter-row">' +
+        '<select class="library-filter-select-detail" onchange="selectDetailLibrary(this.value)">' +
+        '<option value=""' + (!detailFilterLibrary ? ' selected' : '') + '>全部图书馆 (可借' + totalAvailable + '本)</option>' +
+        libraries.map(function(lib) {
+            var avail = getLibraryAvailableCount(lib);
+            return '<option value="' + escapeHtml(lib) + '"' + (detailFilterLibrary === lib ? ' selected' : '') + '>' + escapeHtml(lib) + ' (可借' + avail + '本)</option>';
+        }).join('') +
+        '</select>' +
+        (preferredLibrary ? '<button class="btn-switch" onclick="toggleDetailLibraryMode()">' + (detailShowAllMode || !detailFilterLibrary ? '切换偏好' : '切换全部') + '</button>' : '') +
+        '</div>';
+
+    var modeIndicator = '';
+    if (detailFilterLibrary && !detailShowAllMode) {
+        modeIndicator = '<div class="library-mode-indicator">' +
+            '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>' +
+            '当前: ' + detailFilterLibrary + ' (' + holdings.length + '本)</div>';
+    }
+
+    var tableHtml = '';
+    if (holdings.length > 0) {
+        tableHtml = '<table class="holdings-table"><thead><tr><th>馆藏地</th><th>条码号</th><th>索书号</th><th>状态</th></tr></thead><tbody>' +
+            holdings.map(function(h) {
+                var statusClass = getStatusClass(h.status);
+                return '<tr><td>' + (escapeHtml(h.library) || '-') + '</td>' +
+                    '<td>' + (escapeHtml(h.location) || '-') + '</td>' +
+                    '<td>' + (escapeHtml(h.call_number) || '-') + '</td>' +
+                    '<td><span class="status-badge ' + statusClass + '">' + formatStatus(h.status) + '</span></td></tr>';
+            }).join('') +
+            '</tbody></table>';
+    } else {
+        tableHtml = '<p style="color:var(--text-secondary);padding:20px 0">暂无馆藏信息</p>';
+    }
+
+    container.innerHTML = filterSection + modeIndicator + tableHtml;
+}
+
+function getDisplayHoldings() {
+    if (!detailFilterLibrary) return allDetailHoldings;
+    return filterHoldingsByLibrary(allDetailHoldings, detailFilterLibrary);
+}
+
+function getLibraryOptions() {
+    var libs = [];
+    var seen = {};
+    allDetailHoldings.forEach(function(h) {
+        if (h.library && !seen[h.library]) { seen[h.library] = true; libs.push(h.library); }
+    });
+    libs.sort(function(a, b) { return a.localeCompare(b, 'zh-CN'); });
+    return libs;
+}
+
+function getLibraryAvailableCount(libName) {
+    return calculateAvailableCount(allDetailHoldings.filter(function(h) { return h.library === libName; }));
+}
+
+function selectDetailLibrary(libName) {
+    if (libName) { detailFilterLibrary = libName; detailShowAllMode = false; }
+    else { detailFilterLibrary = ''; detailShowAllMode = true; }
+    renderHoldingsTable();
+    updateDetailHoldingsHeader();
+}
+
+function toggleDetailLibraryMode() {
+    detailShowAllMode = !detailShowAllMode;
+    if (detailShowAllMode) { detailFilterLibrary = ''; }
+    else { detailFilterLibrary = findMatchingLibrary(preferredLibrary, getLibraryOptions()); }
+    renderHoldingsTable();
+    updateDetailHoldingsHeader();
+}
+
+function updateDetailHoldingsHeader() {
+    var holdings = getDisplayHoldings();
+    var availableCount = calculateAvailableCount(holdings);
+    var headerEl = document.querySelector('.holdings-header h2');
+    if (headerEl) headerEl.textContent = '馆藏信息 (' + holdings.length + '本，可借' + availableCount + '本)';
+}
+
+// === Bookmarks ===
+function loadBookmarkCache() {
+    fetch('/api/bookmarks').then(function(r) { return r.json(); }).then(function(data) {
+        if (data.success && data.bookmarks) {
+            bookmarkCache.clear();
+            data.bookmarks.forEach(function(b) { bookmarkCache.add(b.record_id); });
+        }
+    }).catch(function() {});
+}
+
+// === Bookmarks Page ===
+function loadBookmarksPage() {
+    var listEl = document.getElementById('bookmarks-list');
+    listEl.innerHTML = '<div class="loading-text"><span class="loading-spinner"></span> 正在加载收藏...</div>';
+
+    fetch('/api/bookmarks').then(function(r) { return r.json(); }).then(function(data) {
+        if (!data.success || !data.bookmarks || data.bookmarks.length === 0) {
+            bookmarksData = [];
+            document.getElementById('bookmarks-page-count').textContent = '0';
+            listEl.innerHTML = '<div class="bookmarks-empty"><div class="bookmarks-empty-icon">⭐</div><p>暂无收藏</p><p style="font-size:14px;margin-top:8px;color:var(--text-tertiary)">搜索图书时点击收藏按钮即可添加</p></div>';
+            return;
+        }
+
+        // Initialize bookmarksData with basic info
+        bookmarksData = data.bookmarks.map(function(b) {
+            return {
+                id: b.id,
+                record_id: b.record_id,
+                title: b.title,
+                author: b.author || '',
+                cover_url: b.cover_url || '',
+                call_number: b.call_number || '',
+                created_at: b.created_at || '',
+                holdings: null,
+                availableCount: -1, // -1 = loading
+                libraries: []
+            };
+        });
+
+        document.getElementById('bookmarks-page-count').textContent = bookmarksData.length;
+        renderBookmarksList();
+
+        // Async fetch holdings for each bookmark
+        bookmarksData.forEach(function(bm, idx) {
+            fetch('/api/holdings/' + bm.record_id).then(function(r) { return r.json(); }).then(function(hData) {
+                if (hData.success && hData.holdings) {
+                    bm.holdings = hData.holdings;
+                    bm.availableCount = calculateAvailableCount(hData.holdings);
+                    // Extract unique libraries
+                    var libSet = {};
+                    bm.libraries = [];
+                    hData.holdings.forEach(function(h) {
+                        if (h.library && !libSet[h.library]) {
+                            libSet[h.library] = true;
+                            bm.libraries.push(h.library);
+                        }
+                    });
+                    // Also extract call_number from holdings if not present
+                    if (!bm.call_number && hData.holdings.length > 0 && hData.holdings[0].call_number) {
+                        bm.call_number = hData.holdings[0].call_number;
+                    }
+                } else {
+                    bm.availableCount = 0;
+                    bm.holdings = [];
+                }
+                // Update library filter dropdown
+                updateBookmarksLibraryDropdown();
+                renderBookmarksList();
+            }).catch(function() {
+                bm.availableCount = 0;
+                bm.holdings = [];
+                renderBookmarksList();
+            });
+        });
+    }).catch(function() {
+        listEl.innerHTML = '<div class="bookmarks-empty"><p>加载失败，请检查网络连接</p></div>';
+    });
+}
+
+function updateBookmarksLibraryDropdown() {
+    var select = document.getElementById('bookmarks-library-select');
+    var currentVal = select.value;
+    var allLibs = {};
+    bookmarksData.forEach(function(bm) {
+        if (bm.libraries) {
+            bm.libraries.forEach(function(lib) {
+                if (!allLibs[lib]) allLibs[lib] = true;
+            });
+        }
+    });
+    var libs = Object.keys(allLibs).sort(function(a, b) { return a.localeCompare(b, 'zh-CN'); });
+    var html = '<option value="">全部图书馆</option>';
+    libs.forEach(function(lib) {
+        html += '<option value="' + escapeHtml(lib) + '"' + (currentVal === lib ? ' selected' : '') + '>' + escapeHtml(lib) + '</option>';
+    });
+    select.innerHTML = html;
+}
+
+function getFilteredBookmarks() {
+    var filtered = bookmarksData.slice();
+
+    // Filter by availability
+    if (bookmarksFilter === 'available') {
+        filtered = filtered.filter(function(bm) { return bm.availableCount > 0; });
+    } else if (bookmarksFilter === 'unavailable') {
+        filtered = filtered.filter(function(bm) { return bm.availableCount === 0; });
+    }
+
+    // Filter by library
+    if (bookmarksLibraryFilter) {
+        filtered = filtered.filter(function(bm) {
+            if (!bm.holdings || bm.holdings.length === 0) return false;
+            return bm.holdings.some(function(h) { return isLibraryMatch(h.library, bookmarksLibraryFilter); });
+        });
+    }
+
+    // Sort
+    if (bookmarksSort === 'avail_desc') {
+        filtered.sort(function(a, b) { return (b.availableCount || 0) - (a.availableCount || 0); });
+    } else if (bookmarksSort === 'avail_asc') {
+        filtered.sort(function(a, b) { return (a.availableCount || 0) - (b.availableCount || 0); });
+    }
+    // 'time' = default order (already in created_at order from API)
+
+    return filtered;
+}
+
+function renderBookmarksList() {
+    var listEl = document.getElementById('bookmarks-list');
+    var filtered = getFilteredBookmarks();
+
+    if (filtered.length === 0 && bookmarksData.length > 0) {
+        listEl.innerHTML = '<div class="bookmarks-empty"><div class="bookmarks-empty-icon">🔍</div><p>没有符合筛选条件的收藏</p></div>';
+        return;
+    }
+    if (filtered.length === 0) return;
+
+    listEl.innerHTML = filtered.map(function(bm) {
+        var coverUrl = bm.cover_url || (BASE_URL + '/Cover/Show?instanceId=' + bm.record_id);
+        var availBadge = '';
+        if (bm.availableCount === -1) {
+            availBadge = '<span class="bookmark-avail-badge loading">加载中...</span>';
+        } else if (bm.availableCount > 0) {
+            availBadge = '<span class="bookmark-avail-badge available">可借 ' + bm.availableCount + ' 本</span>';
+        } else if (bm.holdings && bm.holdings.length > 0) {
+            availBadge = '<span class="bookmark-avail-badge unavailable">已借出</span>';
+        } else {
+            availBadge = '<span class="bookmark-avail-badge unknown">暂无馆藏</span>';
+        }
+
+        // Library tags showing available copies
+        var libTags = '';
+        if (bm.holdings && bm.holdings.length > 0) {
+            var libAvail = {};
+            bm.holdings.forEach(function(h) {
+                if (!libAvail[h.library]) libAvail[h.library] = { total: 0, avail: 0 };
+                libAvail[h.library].total++;
+                var s = h.status || '';
+                if (s.indexOf('已归还') !== -1 && s.indexOf('流转中') === -1) libAvail[h.library].avail++;
+            });
+            var libNames = Object.keys(libAvail).sort(function(a, b) { return a.localeCompare(b, 'zh-CN'); });
+            libTags = libNames.map(function(lib) {
+                var info = libAvail[lib];
+                var shortLib = lib.length > 6 ? lib.substring(0, 6) + '...' : lib;
+                return '<span class="bookmark-lib-tag">' + escapeHtml(shortLib) + '×' + info.avail + '</span>';
+            }).join('');
+        }
+
+        return '<div class="bookmark-list-card" onclick="showDetail(\'' + bm.record_id + '\')">' +
+            '<div class="bookmark-list-cover">' +
+                (coverUrl ? '<img src="' + coverUrl + '" loading="lazy" onerror="this.style.display=\'none\';this.parentElement.textContent=\'无封面\'">' : '无封面') +
+            '</div>' +
+            '<div class="bookmark-list-info">' +
+                '<div class="bookmark-list-title">' + escapeHtml(bm.title) + '</div>' +
+                '<div class="bookmark-list-author">' + escapeHtml(bm.author || '未知作者') + '</div>' +
+                (bm.call_number ? '<div class="bookmark-list-callnumber">索书号：' + escapeHtml(bm.call_number) + '</div>' : '') +
+                '<div class="bookmark-list-badges">' + availBadge + libTags + '</div>' +
+            '</div>' +
+            '<button class="bookmark-list-delete" onclick="deleteBookmarkFromPage(' + bm.id + ',event)" title="删除收藏">' +
+                '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>' +
+            '</button>' +
+        '</div>';
+    }).join('');
+}
+
+function setBookmarksFilter(filter) {
+    bookmarksFilter = filter;
+    // Update button active states
+    document.querySelectorAll('.bookmarks-filter-btn').forEach(function(btn) {
+        btn.classList.toggle('active', btn.getAttribute('data-filter') === filter);
+    });
+    renderBookmarksList();
+}
+
+function setBookmarksLibraryFilter(lib) {
+    bookmarksLibraryFilter = lib;
+    renderBookmarksList();
+}
+
+function setBookmarksSort(sort) {
+    bookmarksSort = sort;
+    renderBookmarksList();
+}
+
+function deleteBookmarkFromPage(id, event) {
+    event.stopPropagation();
+    fetch('/api/bookmarks/' + id, { method: 'DELETE' }).then(function() {
+        loadBookmarkCache();
+        loadBookmarksPage();
+    });
+}
+
+function toggleBookmarkCard(recordId, title, author, coverUrl, event) {
+    event.stopPropagation();
+    if (bookmarkCache.has(recordId)) {
+        // Find and delete
+        fetch('/api/bookmarks').then(function(r) { return r.json(); }).then(function(data) {
+            if (data.success && data.bookmarks) {
+                var bm = data.bookmarks.find(function(b) { return b.record_id === recordId; });
+                if (bm) {
+                    fetch('/api/bookmarks/' + bm.id, { method: 'DELETE' }).then(function() {
+                        bookmarkCache.delete(recordId);
+                        updateBookmarkButtons(recordId, false);
+                    });
+                }
+            }
+        });
+    } else {
+        fetch('/api/bookmarks', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ record_id: recordId, title: title, author: author, cover_url: coverUrl })
+        }).then(function(r) { return r.json(); }).then(function(data) {
+            if (data.success) {
+                bookmarkCache.add(recordId);
+                updateBookmarkButtons(recordId, true);
+            }
+        });
+    }
+}
+
+function toggleBookmarkDetail(recordId, title, author, coverUrl) {
+    if (bookmarkCache.has(recordId)) {
+        fetch('/api/bookmarks').then(function(r) { return r.json(); }).then(function(data) {
+            if (data.success && data.bookmarks) {
+                var bm = data.bookmarks.find(function(b) { return b.record_id === recordId; });
+                if (bm) {
+                    fetch('/api/bookmarks/' + bm.id, { method: 'DELETE' }).then(function() {
+                        bookmarkCache.delete(recordId);
+                        updateBookmarkButtons(recordId, false);
+                    });
+                }
+            }
+        });
+    } else {
+        fetch('/api/bookmarks', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ record_id: recordId, title: title, author: author, cover_url: coverUrl })
+        }).then(function(r) { return r.json(); }).then(function(data) {
+            if (data.success) {
+                bookmarkCache.add(recordId);
+                updateBookmarkButtons(recordId, true);
+            }
+        });
+    }
+}
+
+function updateBookmarkButtons(recordId, isBookmarked) {
+    // Update card buttons
+    document.querySelectorAll('.bookmark-btn-card').forEach(function(btn) {
+        var onclick = btn.getAttribute('onclick');
+        if (onclick && onclick.indexOf(recordId) > -1) {
+            if (isBookmarked) btn.classList.add('bookmarked');
+            else btn.classList.remove('bookmarked');
+            btn.querySelector('svg').setAttribute('fill', isBookmarked ? 'currentColor' : 'none');
+            btn.title = isBookmarked ? '取消收藏' : '收藏';
+        }
+    });
+    // Update detail button
+    var detailBtn = document.getElementById('detail-bookmark-btn');
+    if (detailBtn) {
+        if (isBookmarked) detailBtn.classList.add('bookmarked');
+        else detailBtn.classList.remove('bookmarked');
+        var svg = detailBtn.querySelector('svg');
+        if (svg) svg.setAttribute('fill', isBookmarked ? 'currentColor' : 'none');
+        detailBtn.childNodes[detailBtn.childNodes.length - 1].textContent = isBookmarked ? '已收藏' : '收藏';
+    }
+    // Refresh sidebar if open
+    if (sidebarOpen && sidebarTab === 'bookmarks') loadBookmarksList();
+}
+
+// === Sidebar ===
+function toggleSidebar(tab) {
+    if (sidebarOpen && sidebarTab === tab) {
+        closeSidebar();
+        return;
+    }
+    sidebarTab = tab;
+    sidebarOpen = true;
+    document.getElementById('sidebar').classList.add('open');
+    document.getElementById('btn-history').classList.toggle('active', tab === 'history');
+    document.getElementById('btn-bookmarks').classList.toggle('active', tab === 'bookmarks');
+    switchSidebarTab(tab);
+}
+
+function closeSidebar() {
+    sidebarOpen = false;
+    document.getElementById('sidebar').classList.remove('open');
+    document.getElementById('btn-history').classList.remove('active');
+    document.getElementById('btn-bookmarks').classList.remove('active');
+}
+
+function switchSidebarTab(tab) {
+    sidebarTab = tab;
+    document.getElementById('tab-history').classList.toggle('active', tab === 'history');
+    document.getElementById('tab-bookmarks').classList.toggle('active', tab === 'bookmarks');
+    document.getElementById('sidebar-title').textContent = tab === 'history' ? '搜索历史' : '收藏夹';
+    if (tab === 'history') loadHistoryList();
+    else loadBookmarksList();
+}
+
+function loadHistoryList() {
+    var body = document.getElementById('sidebar-body');
+    body.innerHTML = '<div class="loading-text"><span class="loading-spinner"></span></div>';
+    fetch('/api/history').then(function(r) { return r.json(); }).then(function(data) {
+        if (!data.success || !data.history || data.history.length === 0) {
+            body.innerHTML = '<div class="sidebar-empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg><p>暂无搜索历史</p></div>';
+            return;
+        }
+        body.innerHTML = data.history.map(function(item) {
+            var typeLabel = {all:'全部',title:'书名',author:'作者',publisher:'出版社',subject:'主题',callnumber:'索书号'}[item.search_type] || item.search_type;
+            return '<div class="history-item" onclick="searchFromHistory(\'' + escapeAttr(item.keyword) + '\',\'' + item.search_type + '\')">' +
+                '<span class="history-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>' +
+                '<div class="history-info">' +
+                    '<div class="history-keyword">' + escapeHtml(item.keyword) + '</div>' +
+                    '<div class="history-meta">' + typeLabel + ' · ' + item.result_count + '条结果 · ' + formatTime(item.created_at) + '</div>' +
+                '</div>' +
+                '<button class="history-delete" onclick="deleteHistory(' + item.id + ',event)" title="删除">' +
+                    '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>' +
+                '</button>' +
+            '</div>';
+        }).join('');
+    }).catch(function() {
+        body.innerHTML = '<div class="sidebar-empty"><p>加载失败</p></div>';
+    });
+}
+
+function loadBookmarksList() {
+    var body = document.getElementById('sidebar-body');
+    body.innerHTML = '<div class="loading-text"><span class="loading-spinner"></span></div>';
+    fetch('/api/bookmarks').then(function(r) { return r.json(); }).then(function(data) {
+        if (!data.success || !data.bookmarks || data.bookmarks.length === 0) {
+            body.innerHTML = '<div class="sidebar-empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg><p>暂无收藏</p></div>';
+            return;
+        }
+        body.innerHTML = data.bookmarks.map(function(item) {
+            var coverUrl = item.cover_url || '';
+            return '<div class="bookmark-item" onclick="showDetail(\'' + item.record_id + '\')">' +
+                '<div class="bookmark-cover">' + (coverUrl ? '<img src="' + coverUrl + '" onerror="this.style.display=\'none\';this.parentElement.textContent=\'无封面\'">' : '无封面') + '</div>' +
+                '<div class="bookmark-info">' +
+                    '<div class="bookmark-title">' + escapeHtml(item.title) + '</div>' +
+                    '<div class="bookmark-author">' + escapeHtml(item.author || '') + '</div>' +
+                '</div>' +
+                '<button class="bookmark-delete" onclick="deleteBookmark(' + item.id + ',event)" title="删除">' +
+                    '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>' +
+                '</button>' +
+            '</div>';
+        }).join('') + '<a class="sidebar-view-all" onclick="closeSidebar(); showPage(\'page-bookmarks\'); loadBookmarksPage()">查看全部收藏 (' + data.bookmarks.length + ')</a>';
+    }).catch(function() {
+        body.innerHTML = '<div class="sidebar-empty"><p>加载失败</p></div>';
+    });
+}
+
+function searchFromHistory(keyword, type) {
+    document.getElementById('search-input').value = keyword;
+    document.getElementById('search-input-2').value = keyword;
+    document.getElementById('h-search-input').value = keyword;
+    document.getElementById('search-type').value = type;
+    document.getElementById('search-type-2').value = type;
+    document.getElementById('h-search-type').value = type;
+    doSearch(1,'history');
+}
+
+function deleteHistory(id, event) {
+    event.stopPropagation();
+    fetch('/api/history/' + id, { method: 'DELETE' }).then(function() {
+        loadHistoryList();
+    });
+}
+
+function deleteBookmark(id, event) {
+    event.stopPropagation();
+    fetch('/api/bookmarks/' + id, { method: 'DELETE' }).then(function() {
+        loadBookmarkCache();
+        loadBookmarksList();
+    });
+}
+
+// === Update Check ===
+function checkForUpdateSilent() {
+    fetch('/api/update').then(function(r) { return r.json(); }).then(function(data) {
+        if (data.has_update) {
+            document.getElementById('update-dot').classList.add('show');
+        }
+    }).catch(function() {});
+}
+
+function checkForUpdate() {
+    var modal = document.getElementById('update-modal');
+    document.getElementById('modal-title').textContent = '检查更新';
+    document.getElementById('modal-body').innerHTML = '<span class="loading-spinner"></span> 正在检查更新...';
+    document.getElementById('modal-actions').innerHTML = '<button class="modal-btn modal-btn-secondary" onclick="closeModal()">关闭</button>';
+    modal.classList.add('show');
+
+    fetch('/api/update').then(function(r) { return r.json(); }).then(function(data) {
+        if (data.has_update) {
+            document.getElementById('modal-body').innerHTML =
+                '<p>发现新版本: <strong>v' + (data.latest_version || '') + '</strong></p>' +
+                (data.release_notes ? '<p style="margin-top:8px;font-size:13px">' + escapeHtml(data.release_notes).substring(0, 200) + '</p>' : '');
+            document.getElementById('modal-actions').innerHTML =
+                '<button class="modal-btn modal-btn-secondary" onclick="closeModal()">稍后再说</button>' +
+                (data.download_url ? '<a href="' + data.download_url + '" target="_blank" class="modal-btn modal-btn-primary" style="text-decoration:none">下载更新</a>' : '');
+            document.getElementById('update-dot').classList.add('show');
+        } else {
+            document.getElementById('modal-body').innerHTML = '<p>当前已是最新版本 v' + (data.current_version || '1.0.0') + '</p>';
+        }
+    }).catch(function() {
+        document.getElementById('modal-body').innerHTML = '<p>检查更新失败，请稍后重试</p>';
+    });
+}
+
+function closeModal() {
+    document.getElementById('update-modal').classList.remove('show');
+}
+
+// === Library Utils ===
+function isLibraryMatch(holdingLib, filterLib) {
+    if (!holdingLib || !filterLib) return false;
+    var hLib = holdingLib.toLowerCase();
+    var fLib = filterLib.toLowerCase();
+    return hLib.indexOf(fLib) !== -1 || fLib.indexOf(hLib) !== -1 ||
+        hLib.indexOf(fLib.replace(/[（）()]/g, '')) !== -1;
+}
+
+function filterHoldingsByLibrary(holdings, preferredLibrary) {
+    if (!preferredLibrary || !holdings || holdings.length === 0) return holdings || [];
+    return holdings.filter(function(h) { return isLibraryMatch(h.library, preferredLibrary); });
+}
+
+function findMatchingLibrary(preferredLib, libraries) {
+    if (!preferredLib) return '';
+    for (var i = 0; i < libraries.length; i++) {
+        if (isLibraryMatch(libraries[i], preferredLib)) return libraries[i];
+    }
+    return preferredLib;
+}
+
+function calculateAvailableCount(holdings) {
+    if (!holdings || holdings.length === 0) return 0;
+    return holdings.filter(function(h) {
+        var s = h.status || '';
+        return s.indexOf('已归还') !== -1 && s.indexOf('流转中') === -1;
+    }).length;
+}
+
+function getStatusClass(status) {
+    if (!status) return 'status-unknown';
+    var s = status.toLowerCase();
+    if (s.indexOf('流转中') !== -1) return 'status-in-transit';
+    if (s.indexOf('可借') !== -1 || s.indexOf('在馆') !== -1 || s.indexOf('已归还') !== -1) return 'status-available';
+    if (s.indexOf('借出') !== -1 || s.indexOf('外借') !== -1 || s.indexOf('丢失') !== -1) return 'status-unavailable';
+    return 'status-unknown';
+}
+
+function formatStatus(status) {
+    if (!status) return '未知';
+    if (status.indexOf('丢失') !== -1) return '不可借阅';
+    if (status.indexOf('已归还') !== -1) {
+        if (status.indexOf('流转中') !== -1) return '流转中';
+        return '可借阅';
+    }
+    return status;
+}
+
+// === Helpers ===
+function escapeHtml(text) {
+    if (!text) return '';
+    var div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function escapeAttr(text) {
+    if (!text) return '';
+    return text.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+}
+
+function formatTime(timeStr) {
+    if (!timeStr) return '';
+    var d = new Date(timeStr);
+    if (isNaN(d.getTime())) return timeStr;
+    var now = new Date();
+    var diff = now - d;
+    if (diff < 60000) return '刚刚';
+    if (diff < 3600000) return Math.floor(diff / 60000) + '分钟前';
+    if (diff < 86400000) return Math.floor(diff / 3600000) + '小时前';
+    if (diff < 604800000) return Math.floor(diff / 86400000) + '天前';
+    return (d.getMonth() + 1) + '/' + d.getDate();
+}
+
+// === Ranking ===
+var rankingState = {
+    readerType: 'adult',
+    dateType: 'month',
+    clc: '',
+    lan: 'chi',
+    showAll: false,
+    data: [],
+    loading: false
+};
+
+function loadRanking() {
+    rankingState.loading = true;
+    var readerKey = rankingState.readerType === 'children' ? 'child' : rankingState.readerType;
+    var type = readerKey + '_' + rankingState.dateType;
+    var now = new Date();
+    var date;
+    if (rankingState.dateType === 'month') {
+        var y = now.getFullYear();
+        var m = now.getMonth(); // 0-indexed: 0=Jan, 5=Jun
+        // Use previous month (current month data may not be published yet)
+        if (m === 0) { y -= 1; m = 12; }
+        date = y + (m < 10 ? '0' : '') + m;
+    } else {
+        date = '' + (now.getFullYear() - 1);
+    }
+
+    var apiUrl = '/api/ranking?type=' + type + '&date=' + date + '&clc=' + encodeURIComponent(rankingState.clc) + '&lan=' + rankingState.lan;
+
+    fetch(apiUrl).then(function(r) {
+        console.log('[Ranking] Response status:', r.status, 'URL:', apiUrl);
+        if (!r.ok) {
+            throw new Error('HTTP ' + r.status);
+        }
+        return r.json();
+    }).then(function(data) {
+        console.log('[Ranking] Data received:', data.success, 'items:', (data.ranking || []).length);
+        if (data.success) {
+            rankingState.data = data.ranking || [];
+            rankingState.loading = false;
+            renderRanking();
+        } else {
+            rankingState.loading = false;
+            renderRankingError(data.error || '加载失败');
+        }
+    }).catch(function(err) {
+        console.error('[Ranking] Error:', err);
+        rankingState.loading = false;
+        renderRankingError('网络错误: ' + err.message);
+    });
+
+    renderRankingLoading();
+}
+
+function renderRanking() {
+    var container = document.getElementById('ranking-list');
+    if (!container) return;
+    var items = rankingState.showAll ? rankingState.data : rankingState.data.slice(0, 10);
+    if (items.length === 0) {
+        container.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-tertiary)">暂无排行数据</div>';
+        return;
+    }
+    container.innerHTML = items.map(function(book) {
+        var rankClass = parseInt(book.order) <= 3 ? ' top' + book.order : '';
+        return '<div class="ranking-item" onclick="showRankingDetail(\'' + (book.isbn || '') + '\',\'' + (book.bookid || '') + '\',\'' + escapeHtml(book.title || '').replace(/'/g, "\\'") + '\')">' +
+            '<span class="ranking-rank' + rankClass + '">' + book.order + '</span>' +
+            '<div class="ranking-cover">' + (book.cover ? '<img src="' + book.cover + '" loading="lazy" onerror="this.style.display=\'none\'">' : '') + '</div>' +
+            '<div class="ranking-info">' +
+                '<div class="ranking-book-title">' + escapeHtml(book.title) + '</div>' +
+                '<div class="ranking-book-author">' + escapeHtml(book.author || '') + '</div>' +
+            '</div>' +
+            '<span class="ranking-cnt">借阅 ' + (book.cnt || '0') + ' 次</span>' +
+        '</div>';
+    }).join('');
+
+    var viewAllLink = document.getElementById('ranking-view-all');
+    if (viewAllLink) {
+        if (rankingState.showAll || rankingState.data.length <= 10) {
+            viewAllLink.style.display = 'none';
+        } else {
+            viewAllLink.style.display = '';
+            viewAllLink.textContent = '查看全部 (' + rankingState.data.length + ')';
+        }
+    }
+}
+
+function renderRankingLoading() {
+    var container = document.getElementById('ranking-list');
+    if (container) container.innerHTML = '<div class="loading-text"><span class="loading-spinner"></span> 正在加载排行榜...</div>';
+}
+
+function renderRankingError(msg) {
+    var container = document.getElementById('ranking-list');
+    if (container) container.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-tertiary)">' + msg + '</div>';
+}
+
+function setRankingReaderType(type) {
+    rankingState.readerType = type;
+    document.querySelectorAll('.ranking-reader-btn').forEach(function(btn) {
+        btn.classList.toggle('active', btn.dataset.type === type);
+    });
+    loadRanking();
+}
+
+function setRankingDateType(type) {
+    rankingState.dateType = type;
+    document.querySelectorAll('.ranking-date-btn').forEach(function(btn) {
+        btn.classList.toggle('active', btn.dataset.type === type);
+    });
+    loadRanking();
+}
+
+function setRankingCategory(clc) {
+    rankingState.clc = clc;
+    loadRanking();
+}
+
+function toggleRankingShowAll() {
+    rankingState.showAll = !rankingState.showAll;
+    renderRanking();
+    var link = document.getElementById('ranking-view-all');
+    if (link) link.textContent = rankingState.showAll ? '收起' : '查看全部 (' + rankingState.data.length + ')';
+}
+
+function showRankingDetail(isbn, bookid, title) {
+    // 排行榜的bookid是bibid，不能直接作为record ID
+    // 通过ISBN或书名搜索获取正确的record ID
+    var params = [];
+    if (isbn) params.push('isbn=' + encodeURIComponent(isbn));
+    if (title) params.push('title=' + encodeURIComponent(title));
+    if (params.length === 0) { showDetail(bookid); return; }
+
+    fetch('/api/ranking/lookup?' + params.join('&')).then(function(r) { return r.json(); }).then(function(data) {
+        if (data.success && data.recordId) {
+            showDetail(data.recordId);
+        } else {
+            showDetail(bookid);
+        }
+    }).catch(function() {
+        showDetail(bookid);
+    });
+}
+
+// === Reading Report (SVG-based, no Chart.js) ===
+function setReportYear(year) {
+    document.querySelectorAll('.report-year-btn').forEach(function(btn) {
+        btn.classList.toggle('active', parseInt(btn.dataset.year) === year);
+    });
+    document.querySelectorAll('.report-year-content').forEach(function(el) {
+        el.style.display = el.id === 'report-' + year ? '' : 'none';
+    });
+}
+</script>
+</body>
+</html>
