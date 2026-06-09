@@ -48,7 +48,6 @@ jobs:
         run: npm ci
 
       - name: Deploy to Cloudflare Workers
-        if: ${{ secrets.CLOUDFLARE_API_TOKEN != '' }}
         continue-on-error: true
         run: npx wrangler deploy
         env:
