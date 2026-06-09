@@ -28,35 +28,6 @@ jobs:
           node-version: '20'
           cache: 'npm'
 
-      # Generate rsrc.syso from icon.ico using go-winres
-      - name: Generate Windows resource file
-        working-directory: desktop
-        run: |
-          go install github.com/tc-hib/go-winres@latest
-          go-winres init
-          $winres = @'
-          //go:build ignore
-
-          package main
-
-          import (
-              "github.com/tc-hib/go-winres"
-          )
-
-          func main() {
-              r := winres.Resource{}
-              r.SetIcon("icon.ico")
-              r.SetManifest(winres.AppManifest{
-                  ExecutionLevel: winres.AsInvoker,
-                  DPIAwareness:   winres.DPIAware,
-              })
-              r.WriteSyso("rsrc.syso", winres.ArchAMD64)
-          }
-          '@
-          Set-Content -Path winres_gen.go -Value $winres -Encoding UTF8
-          go-winres make
-        shell: pwsh
-
       - name: Build Desktop (Release)
         working-directory: desktop
         run: go build -ldflags="-H windowsgui -s -w" -o shlib-desktop.exe .
